@@ -26,47 +26,49 @@ ORG_COLUMNS = {
 USERS_FILE = os.path.join(RUNTIME_DIR, "users.json")
 
 def load_users():
-    if not os.path.exists(USERS_FILE):
-        default_users = {
-            "2266083": {
-                "password": "admin",
-                "name": "Nagesh D. M",
-                "role": "admin",
-                "jurisdiction": "All"
-            },
-            "rastapeth": {
-                "password": "password",
-                "name": "Rastapeth Circle",
-                "role": "user",
-                "jurisdiction": "Rastapeth Urban Circle"
-            },
-            "ganeshkhind": {
-                "password": "password",
-                "name": "Ganeshkhind Circle",
-                "role": "user",
-                "jurisdiction": "Ganeshkhind Urban Circle"
-            },
-            "punerural": {
-                "password": "password",
-                "name": "Pune Rural Circle",
-                "role": "user",
-                "jurisdiction": "Pune Rural Circle"
-            }
+    default_users = {
+        "2266083": {
+            "password": "admin",
+            "name": "Nagesh D. M",
+            "role": "admin",
+            "jurisdiction": "All"
+        },
+        "rastapeth": {
+            "password": "password",
+            "name": "Rastapeth Circle",
+            "role": "user",
+            "jurisdiction": "Rastapeth Urban Circle"
+        },
+        "ganeshkhind": {
+            "password": "password",
+            "name": "Ganeshkhind Circle",
+            "role": "user",
+            "jurisdiction": "Ganeshkhind Urban Circle"
+        },
+        "punerural": {
+            "password": "password",
+            "name": "Pune Rural Circle",
+            "role": "user",
+            "jurisdiction": "Pune Rural Circle"
         }
+    }
+    
+    if not os.path.exists(USERS_FILE):
         try:
             with open(USERS_FILE, "w", encoding="utf-8") as f:
                 json.dump(default_users, f, indent=4)
         except Exception:
             pass
         return default_users
+        
     try:
         with open(USERS_FILE, "r", encoding="utf-8") as f:
             users = json.load(f)
-        # Disable auto-migration - it's causing login issues
-        # Plain text passwords will be used as-is
+        if not users:
+            return default_users
         return users
     except Exception:
-        return {}
+        return default_users
 
 def save_users(users):
     try:
