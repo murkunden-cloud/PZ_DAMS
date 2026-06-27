@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% set page_title = "Name Search" %}
+{% set page_subtitle = "Search employees by full or partial name, then open their case list" %}
+{% block content %}
+<div class="panel" style="margin-bottom: 18px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2 style="margin: 0;">Search by Employee Name</h2>
+        <a href="/home" class="btn btn-secondary btn-sm" style="text-decoration: none;">⬅️ Back to Dashboard</a>
+    </div>
+    <form method="get" action="/search/name">
+        <input name="employee_name" value="{{ name_query or '' }}" placeholder="Enter full or partial name">
+        <button type="submit">Search Name</button>
+    </form>
+</div>
+
+{% if name_result %}
+    {% for entry in name_result %}
+    <div class="panel" style="margin-bottom: 18px;">
+        <h2>Employee: {{ entry.employee.EmployeeName }} ({{ entry.employee.CPFNO }})</h2>
+        <div class="muted">{{ entry.employee.Designation }} | {{ entry.employee.PresentOffice }} | Zone: {{ entry.employee.PresentZone }} | Circle: {{ entry.employee.PresentCircle }} | Division: {{ entry.employee.presentDivision }}</div>
+        <div class="table-wrap" style="margin-top: 12px;">
+            <table>
+                <thead><tr><th>Sheet</th><th>Row</th><th>DC Ref</th><th>Dispatch / Reference</th><th>Last Updated</th><th>Remarks</th><th>Action</th></tr></thead>
+                <tbody>
+                    {% if entry.cases %}
+                    {% for item in entry.cases %}
+                    <tr>
+                        <td>
+                            {{ item.sheet }}
+                            {% if item.source == 'Archive' %}
+                            <div style="margin-top: 4px;"><span style="background-color: #e67e22; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold;">ARCHIVED</span></div>
+                            {% endif %}
+                        </td>
+                        <td>{{ item.row_number }}</td>
+                        <td>{{ item.dc_no }}</td>
+                        <td>{{ item.dispatch_ref or 'N/A' }}</td>
+                        <td>{{ item.last_updated or 'N/A' }}</td>
+                        <td>{{ item.remarks or 'N/A' }}</td>
+                        <td>
+                            <a class="button-link" href="/record/{{ item.sheet }}/{{ item.row_number }}">Open / Edit</a>
+                            {% if item.sheet in ["6DC", "22DC", "23DC"] %}
+                            | <a class="button-link" href="/case/close/{{ item.sheet }}/{{ item.row_number }}" style="color: #e74c3c; font-weight: bold;">Close Case</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr><td colspan="7">No current DC records found for this employee.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+{% elif name_query %}
+<div class="panel">
+    <h2>No results found</h2>
+    <div class="muted">No matching employees or linked DC cases were found for '{{ name_query }}'.</div>
+</div>
+{% else %}
+<div class="panel">
+    <h2>Search by name to view employee details and cases</h2>
+    <div class="muted">Search the master employee list and see related 6DC / 22DC / 23DC case references.</div>
+</div>
+{% endif %}
+{% endblock %}

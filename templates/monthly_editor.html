@@ -1,0 +1,439 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .modal-content {
+        background-color: #ffffff;
+        color: #333333;
+        margin: 3% auto;
+        padding: 30px;
+        border-radius: 12px;
+        width: 95%;
+        max-width: 1400px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 15px 50px rgba(0,0,0,0.5);
+    }
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+    }
+</style>
+<div class="window-panel">
+    <div class="window-header">
+        <div>
+            <span>📅 Monthly Editor & Export</span>
+        </div>
+        <div>
+            <a href="/monthly-export" class="btn btn-success" id="export-btn">📥 Export Monthly Excel (PZ_8DC)</a>
+        </div>
+    </div>
+    
+    <div class="window-body">
+        <div class="tabs" style="margin-bottom: 20px;">
+            <button class="btn btn-primary" id="tab-8dc" onclick="switchTab('8dc')">8DC Sheets</button>
+            <button class="btn btn-secondary" id="tab-35dc" onclick="switchTab('35dc')">All 35DC Sheets</button>
+        </div>
+
+        <div class="form-grid" style="margin-bottom: 20px; align-items: end;">
+            <div class="form-group" id="container-8dc">
+                <label>Select Sheet to Edit (8DC)</label>
+                <select id="sheet-selector-8dc" class="sheet-selector-input">
+                    <option value="">-- Select Sheet --</option>
+                    {% for s in sheets_8dc %}
+                    <option value="{{ s }}">{{ s }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group" id="container-35dc" style="display: none;">
+                <label>Select Sheet to Edit (All Sheets)</label>
+                <select id="sheet-selector-35dc" class="sheet-selector-input">
+                    <option value="">-- Select Sheet --</option>
+                    {% for s in all_sheets %}
+                    <option value="{{ s }}">{{ s }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <button class="btn btn-primary" id="btn-add-record" style="display: none;" onclick="openAddModal()">➕ Add New Record</button>
+            </div>
+        </div>
+
+        <div id="loading-indicator" style="display: none; padding: 20px; text-align: center; color: #7f8c8d;">
+            Loading sheet data...
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table id="data-table" style="display: none;">
+                <thead id="data-thead"></thead>
+                <tbody id="data-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div id="record-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div class="modal-content" style="display: flex; flex-direction: column;">
+        <div class="window-header">
+            <span id="modal-title">Record Editor</span>
+            <button class="btn btn-secondary btn-sm" onclick="closeModal()">✕</button>
+        </div>
+        <div class="window-body" style="overflow-y: auto; flex: 1;">
+            
+            <!-- Dispatch Builder Helper -->
+            <div class="alert info" style="margin-bottom: 20px;">
+                <strong>💡 Dispatch Builder Helper</strong><br>
+                Type a CPF to auto-fill employee details. Build your Dispatch number using the helper below.
+                <div class="form-grid" style="margin-top: 10px;">
+                    <div class="form-group">
+                        <label>CPF Number (Auto-fetch)</label>
+                        <input type="text" id="helper-cpf" placeholder="Enter CPF...">
+                    </div>
+                    <div class="form-group">
+                        <label>Dispatch Prefix</label>
+                        <select id="helper-prefix">
+                            <option value="">-- Select Prefix --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>DC Number</label>
+                        <input type="text" id="helper-dc" placeholder="e.g. 123">
+                    </div>
+                    <div class="form-group">
+                        <label>DC Date</label>
+                        <input type="date" id="helper-date">
+                    </div>
+                </div>
+                </div>
+                <div style="margin-top: 15px; text-align: right;">
+                    <button class="btn btn-primary" id="btn-proceed-entry" type="button" onclick="proceedToFullForm()">▶ Proceed to Remaining Fields</button>
+                </div>
+            </div>
+
+            <form id="record-form" style="display: none; border-top: 2px solid #eee; padding-top: 15px; margin-top: 15px;">
+                <h4 style="margin-top: 0;">Full Sheet Data Entry</h4>
+                <!-- Dynamic fields will be injected here -->
+                <div id="dynamic-fields" class="form-grid"></div>
+                <input type="hidden" id="edit-row-index">
+            </form>
+        </div>
+        <div class="window-header" style="justify-content: flex-end; gap: 10px; background: #f8f9fa;">
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-success" id="btn-save-record" style="display: none;" onclick="saveRecord()">💾 Save Record</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentSheet = "";
+    let currentFieldMap = {};
+    let currentHeaders = [];
+    let prefixesLoaded = false;
+
+    function switchTab(tabId) {
+        document.getElementById('tab-8dc').className = (tabId === '8dc') ? 'btn btn-primary' : 'btn btn-secondary';
+        document.getElementById('tab-35dc').className = (tabId === '35dc') ? 'btn btn-primary' : 'btn btn-secondary';
+        
+        document.getElementById('container-8dc').style.display = (tabId === '8dc') ? 'block' : 'none';
+        document.getElementById('container-35dc').style.display = (tabId === '35dc') ? 'block' : 'none';
+        
+        document.getElementById('data-table').style.display = 'none';
+        document.getElementById('btn-add-record').style.display = 'none';
+        document.getElementById('sheet-selector-' + tabId).value = "";
+    }
+
+    document.querySelectorAll('.sheet-selector-input').forEach(el => {
+        el.addEventListener('change', function() {
+            const sheet = this.value;
+            if(!sheet) {
+                document.getElementById('data-table').style.display = 'none';
+                document.getElementById('btn-add-record').style.display = 'none';
+                return;
+            }
+            loadSheet(sheet);
+        });
+    });
+
+    function loadSheet(sheet) {
+        currentSheet = sheet;
+        document.getElementById('loading-indicator').style.display = 'block';
+        document.getElementById('data-table').style.display = 'none';
+        document.getElementById('btn-add-record').style.display = 'none';
+        
+        fetch(`/api/monthly-sheet-data?sheet=${encodeURIComponent(sheet)}`)
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('loading-indicator').style.display = 'none';
+                if(data.error) {
+                    alert(data.error);
+                    return;
+                }
+                
+                currentFieldMap = data.field_map || {};
+                currentHeaders = data.preview.headers || [];
+                renderTable(data.preview);
+                document.getElementById('data-table').style.display = 'table';
+                
+                const is35DC = document.getElementById('tab-35dc').classList.contains('btn-primary');
+                document.getElementById('btn-add-record').style.display = is35DC ? 'none' : 'inline-flex';
+
+                if(!prefixesLoaded) {
+                    loadPrefixes();
+                }
+            })
+            .catch(err => {
+                alert("Error loading sheet data");
+                document.getElementById('loading-indicator').style.display = 'none';
+            });
+    }
+
+    function loadPrefixes() {
+        fetch('/api/dispatch-prefixes')
+            .then(r => r.json())
+            .then(data => {
+                if(data.prefixes) {
+                    const sel = document.getElementById('helper-prefix');
+                    data.prefixes.forEach(p => {
+                        let opt = document.createElement('option');
+                        if (typeof p === 'object' && p !== null) {
+                            opt.value = p.value;
+                            opt.textContent = p.label;
+                        } else {
+                            opt.value = p;
+                            opt.textContent = p;
+                        }
+                        sel.appendChild(opt);
+                    });
+                    prefixesLoaded = true;
+                }
+            });
+    }
+
+    function renderTable(preview) {
+        const thead = document.getElementById('data-thead');
+        const tbody = document.getElementById('data-tbody');
+        thead.innerHTML = '';
+        tbody.innerHTML = '';
+
+        if(preview.headers && preview.headers.length > 0) {
+            let tr = document.createElement('tr');
+            tr.innerHTML = '<th>Actions</th>';
+            preview.headers.forEach(h => {
+                tr.innerHTML += `<th>${h.header || ('Col ' + h.column)}</th>`;
+            });
+            thead.appendChild(tr);
+        }
+
+        if(preview.rows && preview.rows.length > 0) {
+            preview.rows.forEach(r => {
+                let tr = document.createElement('tr');
+                tr.innerHTML = `<td><button class="btn btn-warning btn-sm" onclick='openEditModal(${r.row_number}, ${JSON.stringify(r.values).replace(/'/g, "&#39;")})'>✏️ Edit</button></td>`;
+                
+                let isBlank = true;
+                preview.headers.forEach((h, idx) => {
+                    const val = r.values[idx] || "";
+                    if(val.toString().trim() !== "") isBlank = false;
+                    tr.innerHTML += `<td>${val}</td>`;
+                });
+                
+                if(!isBlank) {
+                    tbody.appendChild(tr);
+                }
+            });
+        }
+        
+        document.getElementById('data-table').style.display = 'table';
+    }
+
+    function openAddModal() {
+        document.getElementById('modal-title').innerText = `Add New Record - ${currentSheet}`;
+        document.getElementById('edit-row-index').value = "";
+        buildDynamicForm([]);
+        resetHelpers();
+        
+        // Hide form, show proceed button
+        document.getElementById('record-form').style.display = 'none';
+        document.getElementById('btn-save-record').style.display = 'none';
+        document.getElementById('btn-proceed-entry').style.display = 'inline-flex';
+        
+        document.getElementById('record-modal').style.display = 'flex';
+    }
+
+    function openEditModal(rowNum, values) {
+        document.getElementById('modal-title').innerText = `Edit Record (Row ${rowNum}) - ${currentSheet}`;
+        document.getElementById('edit-row-index').value = rowNum;
+        buildDynamicForm(values);
+        resetHelpers();
+        
+        // For Edit, we can just show everything immediately
+        document.getElementById('record-form').style.display = 'block';
+        document.getElementById('btn-save-record').style.display = 'inline-flex';
+        document.getElementById('btn-proceed-entry').style.display = 'none';
+        
+        // Auto populate helpers if possible
+        const cpfIdx = currentFieldMap.cpfno || currentFieldMap.cpf || currentFieldMap.cpf_col;
+        if(cpfIdx) {
+            const cpfVal = values[cpfIdx - 1] || "";
+            document.getElementById('helper-cpf').value = cpfVal;
+        }
+        const dcIdx = currentFieldMap.dispatch || currentFieldMap.chargesheet || currentFieldMap.dc_col;
+        if(dcIdx) {
+            const dispatchVal = values[dcIdx - 1] || "";
+            // basic parsing for helper
+            // We just let the user edit the built string in the actual input box
+        }
+        
+        document.getElementById('record-modal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('record-modal').style.display = 'none';
+    }
+
+    function buildDynamicForm(values) {
+        const container = document.getElementById('dynamic-fields');
+        container.innerHTML = '';
+        
+        currentHeaders.forEach((h, idx) => {
+            const val = values[idx] !== undefined ? values[idx] : '';
+            const fieldId = `field_${h.column}`;
+            
+            const isCpf = (currentFieldMap.cpfno === h.column || currentFieldMap.cpf === h.column || currentFieldMap.cpf_col === h.column);
+            const isDcRef = (currentFieldMap.dispatch === h.column || currentFieldMap.chargesheet === h.column || currentFieldMap.dc_col === h.column);
+            
+            let extraLabel = isCpf ? ' <span class="badge b-minor">CPF</span>' : '';
+            extraLabel += isDcRef ? ' <span class="badge b-major">Dispatch Col</span>' : '';
+
+            const div = document.createElement('div');
+            div.className = 'form-group';
+            div.innerHTML = `
+                <label>${h.header || 'Col ' + h.column}${extraLabel}</label>
+                <input type="text" id="${fieldId}" data-col="${h.column}" value="${val}">
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function resetHelpers() {
+        document.getElementById('helper-cpf').value = "";
+        document.getElementById('helper-prefix').value = "";
+        document.getElementById('helper-dc').value = "";
+        document.getElementById('helper-date').value = "";
+    }
+
+    function proceedToFullForm() {
+        // Validate if CPF is filled
+        if(!document.getElementById('helper-cpf').value.trim()) {
+            alert("Please enter a CPF Number to fetch employee details first.");
+            return;
+        }
+        
+        // Show the rest of the form
+        document.getElementById('record-form').style.display = 'block';
+        document.getElementById('btn-save-record').style.display = 'inline-flex';
+        document.getElementById('btn-proceed-entry').style.display = 'none';
+    }
+
+    // Builder logic
+    document.getElementById('helper-cpf').addEventListener('change', function() {
+        const cpf = this.value.trim();
+        if(!cpf) return;
+        
+        // Push CPF to actual field
+        const cpfIdx = currentFieldMap.cpfno || currentFieldMap.cpf || currentFieldMap.cpf_col;
+        if(cpfIdx) {
+            const el = document.getElementById(`field_${cpfIdx}`);
+            if(el) el.value = cpf;
+        }
+
+        fetch(`/api/lookup-cpf/${cpf}`)
+            .then(r => r.json())
+            .then(data => {
+                if(data.employee) {
+                    const emp = data.employee;
+                    // Auto fill other fields based on generic matching
+                    currentHeaders.forEach(h => {
+                        const hLower = (h.header || "").toLowerCase();
+                        const el = document.getElementById(`field_${h.column}`);
+                        if(!el || el.value) return; // don't overwrite
+                        
+                        if(hLower.includes('name')) el.value = emp.name || "";
+                        else if(hLower.includes('designation') || hLower.includes('desig')) el.value = emp.designation || "";
+                        else if(hLower.includes('office') || hLower.includes('place')) el.value = emp.place || "";
+                        else if(hLower.includes('pay group') || hLower.includes('class')) el.value = emp.paygroup || "";
+                    });
+                }
+            });
+    });
+
+    function updateDispatchField() {
+        const prefix = document.getElementById('helper-prefix').value;
+        const dc = document.getElementById('helper-dc').value;
+        const dt = document.getElementById('helper-date').value;
+        
+        const dcIdx = currentFieldMap.dispatch || currentFieldMap.chargesheet || currentFieldMap.dc_col;
+        if(dcIdx) {
+            const el = document.getElementById(`field_${dcIdx}`);
+            if(el) {
+                let parts = [];
+                if(prefix) parts.push(prefix);
+                if(dc) parts.push(dc);
+                
+                let res = parts.join('/');
+                if(dt) {
+                    const d = new Date(dt);
+                    const ds = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth()+1).padStart(2, '0')}.${d.getFullYear()}`;
+                    res += ` Dt. ${ds}`;
+                }
+                el.value = res;
+            }
+        }
+    }
+
+    document.getElementById('helper-prefix').addEventListener('change', updateDispatchField);
+    document.getElementById('helper-dc').addEventListener('input', updateDispatchField);
+    document.getElementById('helper-date').addEventListener('change', updateDispatchField);
+
+    function saveRecord() {
+        const rowNum = document.getElementById('edit-row-index').value;
+        const inputs = document.querySelectorAll('#dynamic-fields input');
+        
+        let rowData = {};
+        inputs.forEach(inp => {
+            rowData[inp.dataset.col] = inp.value;
+        });
+
+        const payload = {
+            sheet: currentSheet,
+            row_data: rowData
+        };
+
+        let url = '/api/monthly-record/add';
+        if(rowNum) {
+            url = '/api/monthly-record/update';
+            payload.row_number = parseInt(rowNum);
+        }
+
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        })
+        .then(r => r.json())
+        .then(data => {
+            if(data.success) {
+                alert("Record saved successfully!");
+                closeModal();
+                loadSheet(currentSheet); // refresh
+            } else {
+                alert("Error saving record: " + (data.error || "Unknown"));
+            }
+        })
+        .catch(err => {
+            alert("Error saving record.");
+        });
+    }
+</script>
+{% endblock %}

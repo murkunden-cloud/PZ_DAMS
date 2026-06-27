@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="content-header" style="margin-bottom: 20px;">
+    <h2>Data Export & Archive Hub</h2>
+    <p style="color: #7f8c8d;">Download your working files or archive old closed cases into the master history log.</p>
+</div>
+
+<div class="cards">
+    <!-- Card 1: Standard Export -->
+    <div class="card" style="border-left: 4px solid #2ecc71;">
+        <h3>1. Standard Export</h3>
+        <p style="font-size: 14px; color: #555; margin-bottom: 20px;">
+            Download the current working <strong>35_dc.xlsx</strong> workbook. This file contains all active cases and the current month's closed cases.
+        </p>
+        <a href="/download-workbook" class="btn btn-primary" style="background-color: #2ecc71; color: white;">
+            ?? Download Working File
+        </a>
+    </div>
+
+    <!-- Card 2: Archive Closed Cases -->
+    <div class="card" style="border-left: 4px solid #9b59b6;">
+        <h3>2. Archive Closed Cases</h3>
+        <p style="font-size: 14px; color: #555; margin-bottom: 15px;">
+            Extract all closed cases (from sheets 7DC, 8DC, 16DC, 17DC, 24DC, 25DC, 33DC, 34DC) and <strong>merge them into the Historical Archive Master File</strong>.
+        </p>
+        
+        <form method="POST" action="/archive" onsubmit="return confirm('Are you sure you want to run the Archive process?');">
+            <div style="margin-bottom: 15px; background: #fff3cd; color: #856404; padding: 10px; border-radius: 4px; font-size: 13px;">
+                <label style="display: flex; align-items: center; gap: 8px; font-weight: bold; cursor: pointer;">
+                    <input type="checkbox" name="auto_delete" value="yes" checked>
+                    Automatically delete archived cases from the working file (Recommended)
+                </label>
+                <p style="margin: 5px 0 0 20px; font-weight: normal; font-size: 12px;">This ensures that next month you don't accidentally archive the same cases twice.</p>
+            </div>
+            
+            <button type="submit" class="btn btn-primary" style="background-color: #9b59b6; color: white;">
+                ?? Archive Closed Cases & Download Master
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

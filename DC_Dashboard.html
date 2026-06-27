@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>DC Dashboard - Pune Zone</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#222}
+.header{background:linear-gradient(135deg,#1a3a5c,#2471a3);color:#fff;padding:28px 40px}
+.header h1{font-size:26px;margin-bottom:4px}
+.header p{opacity:0.85;font-size:13px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;padding:24px 40px}
+.card{background:#fff;border-radius:10px;padding:18px;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
+.card h3{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1.5px}
+.card .num{font-size:30px;font-weight:700;margin:6px 0}
+.card small{font-size:12px;color:#666}
+.card.minor{border-left:5px solid #3498db}.card.major{border-left:5px solid #e74c3c}
+.card.susp{border-left:5px solid #f39c12}.card.rev{border-left:5px solid #9b59b6}
+.card.appl{border-left:5px solid #27ae60}.card.emp{border-left:5px solid #555}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;padding:0 40px 28px}
+.panel{background:#fff;border-radius:10px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
+.panel h2{font-size:15px;color:#1a3a5c;border-bottom:2px solid #eee;padding-bottom:8px;margin-bottom:12px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#f8f9fa;color:#555;font-weight:600;text-align:left;padding:8px 10px;font-size:11px;text-transform:uppercase}
+td{padding:8px 10px;border-bottom:1px solid #f0f0f0}
+tr:hover{background:#f8f9fa!important}
+.badge{display:inline-block;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:600}
+.b-minor{background:#dbedf8;color:#1f6da8}.b-major{background:#fde8e8;color:#b03a2b}
+.b-suspension{background:#fef3e2;color:#b9770e}.b-suspension_revoke{background:#f3e8fe;color:#7d3c98}
+.b-appeal{background:#e8f8f0;color:#1e8449}.b-gray{background:#f0f0f0;color:#555}
+.footer{text-align:center;padding:20px;color:#999;font-size:12px}
+</style></head><body>
+<div class="header">
+    <h1>DC Management Dashboard - Pune Zone</h1>
+    <p>Disciplinary Cases Overview | Generated: 05 Jun 2026, 08:29 AM</p>
+</div>
+<div class="cards">
+    <div class="card minor"><h3>Minor DC Ongoing</h3><div class="num">1631</div><small>SW: 15 | CW: 3</small></div>
+    <div class="card major"><h3>Major DC All Cases</h3><div class="num">63</div><small>SW: 36 | CW: 27</small></div>
+    <div class="card susp"><h3>Suspension Active</h3><div class="num">4</div><small>Statewise + Circlewise</small></div>
+    <div class="card rev"><h3>Suspension Revoked</h3><div class="num">2</div><small>This Period</small></div>
+    <div class="card appl"><h3>Appeal Disposed</h3><div class="num">2</div><small>Statewise + Circlewise</small></div>
+    <div class="card emp"><h3>Total Employees</h3><div class="num">4562</div><small>In Master Database</small></div>
+</div>
+<div class="grid">
+    <div class="panel"><h2>Sheet-wise Case Count</h2>
+        <table><thead><tr><th>Sheet</th><th>Description</th><th>Count</th></tr></thead>
+        <tbody><tr><td>12DC</td><td>Suspension - End of Last Month (Statewise)</td><td><span class='badge b-suspension'>2</span></td></tr><tr><td>13DC</td><td>Suspension - End of Last Month (Circlewise)</td><td><span class='badge b-suspension'>5</span></td></tr><tr><td>15DC</td><td>Suspension - Current Month (Circlewise)</td><td><span class='badge b-suspension'>2</span></td></tr><tr><td>17DC</td><td>Suspension Revoked - Circlewise</td><td><span class='badge b-suspension_revoke'>2</span></td></tr><tr><td>20DC</td><td>Major DC Chargesheet - Statewise</td><td><span class='badge b-major'>14</span></td></tr><tr><td>21DC</td><td>Major DC Chargesheet - Circlewise</td><td><span class='badge b-major'>1</span></td></tr><tr><td>22DC</td><td>Major DC All Cases - Statewise</td><td><span class='badge b-major'>36</span></td></tr><tr><td>23DC</td><td>Major DC All Cases - Circlewise</td><td><span class='badge b-major'>27</span></td></tr><tr><td>24DC</td><td>Major DC Finalised - Statewise</td><td><span class='badge b-major'>4</span></td></tr><tr><td>25DC</td><td>Major DC Finalised - Circlewise</td><td><span class='badge b-major'>2</span></td></tr><tr><td>29DC</td><td>Appeal Disposed - Statewise</td><td><span class='badge b-appeal'>1</span></td></tr><tr><td>30DC</td><td>Appeal Disposed - Circlewise</td><td><span class='badge b-appeal'>1</span></td></tr><tr><td>4DC</td><td>Minor DC - Statewise (Class I/II)</td><td><span class='badge b-minor'>15</span></td></tr><tr><td>5DC</td><td>Minor DC - Circlewise (Class III/IV)</td><td><span class='badge b-minor'>3</span></td></tr><tr><td>6DC</td><td>Minor DC - Consolidated (4DC+5DC)</td><td><span class='badge b-minor'>1631</span></td></tr><tr><td>7DC</td><td>Minor Closed - Statewise</td><td><span class='badge b-minor'>4</span></td></tr><tr><td>8DC</td><td>Minor Closed - Circlewise</td><td><span class='badge b-minor'>5</span></td></tr></tbody></table>
+    </div>
+    <div class="panel"><h2>Pendency Summary</h2>
+        <table><thead><tr><th>Case Type</th><th>Statewise</th><th>Circlewise</th><th>Total</th></tr></thead><tbody>
+        <tr><td>Minor DC</td><td>15</td><td>3</td><td><b>1631</b></td></tr>
+        <tr><td>Major DC</td><td>36</td><td>27</td><td><b>63</b></td></tr>
+        <tr><td>Suspension</td><td>2</td><td>2</td><td><b>4</b></td></tr>
+        <tr><td>Suspension Revoked</td><td>0</td><td>2</td><td><b>2</b></td></tr>
+        <tr><td>Appeal</td><td>1</td><td>1</td><td><b>2</b></td></tr>
+        </tbody></table>
+    </div>
+</div>
+<div style="padding:0 40px 30px">
+    <div class="panel"><h2>All Sheets - Case Breakdown</h2>
+        <table><thead><tr><th>Sheet</th><th>Type</th><th>Scope</th><th>Count</th></tr></thead><tbody>
+        <tr><td>12DC</td><td>suspension</td><td>statewise</td><td><b>2</b></td></tr><tr><td>13DC</td><td>suspension</td><td>circlewise</td><td><b>5</b></td></tr><tr><td>15DC</td><td>suspension_current</td><td>circlewise</td><td><b>2</b></td></tr><tr><td>17DC</td><td>suspension_revoke</td><td>circlewise</td><td><b>2</b></td></tr><tr><td>20DC</td><td>major</td><td>statewise</td><td><b>14</b></td></tr><tr><td>21DC</td><td>major</td><td>circlewise</td><td><b>1</b></td></tr><tr><td>22DC</td><td>major_all</td><td>statewise</td><td><b>36</b></td></tr><tr><td>23DC</td><td>major_all</td><td>circlewise</td><td><b>27</b></td></tr><tr><td>24DC</td><td>major_finalised</td><td>statewise</td><td><b>4</b></td></tr><tr><td>25DC</td><td>major_finalised</td><td>circlewise</td><td><b>2</b></td></tr><tr><td>29DC</td><td>appeal</td><td>statewise</td><td><b>1</b></td></tr><tr><td>30DC</td><td>appeal</td><td>circlewise</td><td><b>1</b></td></tr><tr><td>4DC</td><td>minor</td><td>statewise</td><td><b>15</b></td></tr><tr><td>5DC</td><td>minor</td><td>circlewise</td><td><b>3</b></td></tr><tr><td>6DC</td><td>minor</td><td>consolidated</td><td><b>1631</b></td></tr><tr><td>7DC</td><td>minor_close</td><td>statewise</td><td><b>4</b></td></tr><tr><td>8DC</td><td>minor_close</td><td>circlewise</td><td><b>5</b></td></tr>
+        </tbody></table>
+    </div>
+</div>
+<div class="footer">DC Manager v1.1 | Pune Zone | Run 'python DC_Manager.py' to update</div>
+</body></html>

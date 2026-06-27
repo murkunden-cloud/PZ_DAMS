@@ -1,0 +1,66 @@
+=========================================================
+DAMS - DISCIPLINARY ACTION MANAGEMENT SYSTEM
+INSTALLATION & DISTRIBUTION MANUAL
+=========================================================
+
+1. DEFAULT USER ACCOUNTS & PASSWORDS
+---------------------------------------------------------
+The program comes pre-configured with the following secure accounts. 
+Only these accounts can access the system.
+
+- Admin (Master Access):
+  User ID: admin
+  Password: admin
+
+- Rastapeth Circle:
+  User ID: rastapeth
+  Password: password
+
+- Ganeshkhind Circle:
+  User ID: ganeshkhind
+  Password: password
+
+- Pune Rural Circle:
+  User ID: punerural
+  Password: password
+
+NOTE: The program automatically locks Circle users to their specific jurisdiction. They cannot view or edit cases outside their circle.
+
+
+2. HOW TO DISTRIBUTE TO CIRCLES (INSTALLATION)
+---------------------------------------------------------
+There is NO installation required. To set up a Circle office:
+
+1. Send them exactly two files:
+   - DAMS.exe
+   - config.ini
+2. Have them save both files into a single folder (e.g., on their Desktop).
+3. Have them open `config.ini` in Notepad.
+4. They must set the DataDirectory line to point to their Google Drive folder where their Excel file is kept.
+   Example: DataDirectory = C:\Users\Username\Google Drive\DAMS
+5. They can now double-click DAMS.exe and log in with their specific Circle User ID.
+
+
+3. DATA SYNC WORKFLOW (NO MANUAL EXPORTS)
+---------------------------------------------------------
+Circle users DO NOT need to manually export files or email them to you.
+
+- When a Circle user adds or edits a case in DAMS, the program directly updates the Excel file inside their Google Drive folder.
+- Google Drive automatically syncs that file to your computer in the background.
+
+To pull their data into your Master File:
+1. Log in to your Admin Dashboard on your computer.
+2. Click the "Sync Circle Data" button on the left sidebar.
+3. Type in the path to their synced Google Drive Excel file on your PC.
+4. Click "Start Sync". The system will automatically inject their new and updated cases into your Master Excel file.
+
+
+4. UPDATING THE PROGRAM IN THE FUTURE
+---------------------------------------------------------
+Because the Application (DAMS.exe) and the Data (Excel files) are completely separate, upgrading is incredibly easy.
+
+If you add a new feature or fix a bug in the master program:
+1. Double-click the `build_exe.bat` file on your computer.
+2. It will generate a brand new `DAMS.exe` file.
+3. Simply email the new `DAMS.exe` file to your Circles and tell them to replace their old one.
+4. Their data remains 100% untouched and perfectly safe in their Google Drive folder.

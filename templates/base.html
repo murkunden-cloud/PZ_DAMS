@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ page_title or "DAMS - DC Manager Portal" }}</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f4f8; color: #333; display: flex; min-height: 100vh; flex-direction: column; }
+        
+        /* Top Navigation Bar */
+        .top-bar {
+            background: linear-gradient(135deg, #1e3a5f, #2d5a88);
+            color: #fff;
+            padding: 15px 25px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 3px solid #142840;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .top-bar h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: 0.5px; }
+        .top-bar .subtitle { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+        .user-info { display: flex; align-items: center; gap: 15px; font-size: 13px; }
+        .user-info a { color: #ffbe76; text-decoration: none; font-weight: 600; padding: 4px 8px; border: 1px solid #ffbe76; border-radius: 4px; transition: all 0.2s; }
+        .user-info a:hover { background: #ffbe76; color: #1e3a5f; }
+
+        /* Main Workspace Container */
+        .workspace { display: flex; flex: 1; }
+
+        /* Left Navigation Panel */
+        .sidebar {
+            width: 240px;
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #34495e;
+        }
+        .sidebar-menu { list-style: none; padding: 0; margin: 0; }
+        .sidebar-menu li a {
+            display: block;
+            padding: 12px 20px;
+            color: #bdc3c7;
+            text-decoration: none;
+            font-size: 14px;
+            border-left: 4px solid transparent;
+            transition: all 0.2s;
+        }
+        .sidebar-menu li a:hover {
+            color: #fff;
+            background: #34495e;
+            border-left-color: #3498db;
+        }
+        .sidebar-menu li a.active {
+            color: #fff;
+            background: #34495e;
+            border-left-color: #3498db;
+            font-weight: 600;
+        }
+        .sidebar-section-title {
+            padding: 10px 20px 5px;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #7f8c8d;
+            letter-spacing: 1px;
+            font-weight: bold;
+        }
+
+        /* Right Content Pane */
+        .main-pane { flex: 1; padding: 25px; overflow-y: auto; }
+
+        /* Structural Panel Windows */
+        .window-panel {
+            background: #fff;
+            border: 1px solid #dcdde1;
+            border-radius: 6px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+            overflow: hidden;
+        }
+        .window-header {
+            background: #f8f9fa;
+            border-bottom: 1px solid #dcdde1;
+            padding: 12px 18px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .window-body { padding: 20px; }
+
+        /* Form styling */
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group.full-width { grid-column: 1 / -1; }
+        label { font-size: 13px; font-weight: 600; color: #2c3e50; }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: inherit;
+            background: #fff;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #2980b9;
+            box-shadow: 0 0 4px rgba(41, 128, 185, 0.2);
+        }
+        textarea { resize: vertical; min-height: 80px; }
+        .form-actions { display: flex; gap: 10px; margin-top: 15px; justify-content: flex-end; }
+
+        /* Alerts and Badges */
+        .alert { padding: 12px 16px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; }
+        .alert.info { background: #d9edf7; color: #31708f; border: 1px solid #bce8f1; }
+        .alert.success { background: #dff0d8; color: #3c763d; border: 1px solid #d6e9c6; }
+        .alert.error { background: #f2dede; color: #a94442; border: 1px solid #ebccd1; }
+
+        .badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+        .badge.b-minor { background: #d9edf7; color: #31708f; }
+        .badge.b-major { background: #f2dede; color: #a94442; }
+        .badge.b-susp { background: #fcf8e3; color: #8a6d3b; }
+        .badge.b-gray { background: #e2e7eb; color: #495057; }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #edf1f5; font-size: 13px; }
+        th { background: #f1f2f6; font-weight: 600; color: #475569; position: sticky; top: 0; }
+        tr:hover { background: #f8fafc; }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.2s;
+            gap: 5px;
+        }
+        .btn-primary { background: #2980b9; color: #fff; }
+        .btn-primary:hover { background: #2471a3; }
+        .btn-success { background: #27ae60; color: #fff; }
+        .btn-success:hover { background: #219653; }
+        .btn-warning { background: #f39c12; color: #fff; }
+        .btn-warning:hover { background: #d68910; }
+        .btn-danger { background: #c0392b; color: #fff; }
+        .btn-danger:hover { background: #b03a2e; }
+        .btn-secondary { background: #7f8c8d; color: #fff; }
+        .btn-secondary:hover { background: #95a5a6; }
+        .btn-sm { padding: 4px 8px; font-size: 11px; }
+
+        /* Footer */
+        .footer {
+            background: #2c3e50;
+            color: #7f8c8d;
+            padding: 10px 25px;
+            font-size: 11px;
+            text-align: center;
+            border-top: 1px solid #34495e;
+        }
+
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+            .top-bar {
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 12px 15px;
+            }
+            .top-bar h1 { font-size: 16px; }
+            .top-bar .subtitle { font-size: 11px; }
+            .user-info {
+                margin-top: 10px;
+                font-size: 12px;
+                flex-wrap: wrap;
+            }
+            
+            .workspace { flex-direction: column; }
+            
+            .sidebar {
+                width: 100%;
+                padding: 15px 0;
+                border-right: none;
+                border-bottom: 1px solid #34495e;
+            }
+            .sidebar-menu li a {
+                padding: 10px 15px;
+                font-size: 13px;
+            }
+            
+            .main-pane { padding: 15px; }
+            
+            .window-panel { margin-bottom: 15px; }
+            .window-header {
+                padding: 10px 12px;
+                font-size: 14px;
+            }
+            .window-body { padding: 15px; }
+            
+            .form-grid { grid-template-columns: 1fr; gap: 12px; }
+            
+            table {
+                font-size: 12px;
+            }
+            th, td {
+                padding: 8px 6px;
+            }
+            
+            .btn {
+                padding: 10px 12px;
+                font-size: 12px;
+            }
+            
+            .stats-row {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .top-bar h1 { font-size: 14px; }
+            .user-info { font-size: 11px; }
+            .sidebar-section-title { font-size: 10px; }
+            .sidebar-menu li a { padding: 8px 12px; font-size: 12px; }
+            .main-pane { padding: 10px; }
+            .window-body { padding: 12px; }
+            
+            /* Stack table cells on very small screens */
+            table, thead, tbody, th, td, tr {
+                display: block;
+            }
+            thead tr {
+                position: absolute;
+                top: -9999px;
+                left: -9999px;
+            }
+            tr {
+                margin-bottom: 10px;
+                border: 1px solid #dcdde1;
+                border-radius: 4px;
+                padding: 10px;
+            }
+            td {
+                border: none;
+                position: relative;
+                padding-left: 50%;
+                padding: 8px 0 8px 50%;
+                text-align: left;
+            }
+            td:before {
+                position: absolute;
+                left: 0;
+                width: 45%;
+                white-space: nowrap;
+                font-weight: bold;
+                content: attr(data-label);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <div>
+            <h1>DAMS Portal</h1>
+            <div class="subtitle">Disciplinary Action Management System - Pune Zone</div>
+        </div>
+        <div class="user-info">
+            <span>User: <strong>{{ user_name or 'Guest' }} ({{ 'Admin' if is_admin else 'Client User' }})</strong></span>
+            <a href="/logout">Logout</a>
+        </div>
+    </div>
+    
+    <div class="workspace">
+        <div class="sidebar">
+            <!-- Owner Highlights Card -->
+            <div style="background: #1e272e; padding: 15px; border-bottom: 2px solid #f39c12; margin-bottom: 15px; font-size: 12px; line-height: 1.4;">
+                <div style="color: #f39c12; font-weight: bold; font-size: 13px; margin-bottom: 5px; display: flex; align-items: center; gap: 5px;">👑 Program Owner</div>
+                <div style="color: #fff; font-weight: bold; font-size: 14px;">Nagesh D. M</div>
+                <div style="color: #bdc3c7;">Head Clerk, MSEDCL</div>
+                <div style="color: #bdc3c7;">PUNE Zone</div>
+                <div style="color: #ffbe76; font-weight: bold; margin-top: 5px; font-size: 13px;">📞 7875388248</div>
+            </div>
+
+            <div class="sidebar-section-title">Case Management</div>
+            <ul class="sidebar-menu">
+                <li><a href="/home" id="nav-dashboard">📊 Dashboard Console</a></li>
+                <li><a href="/case/initiate" id="nav-initiate">➕ Initiate DC Case</a></li>
+                <li><a href="/reports/agewise" id="nav-agewise">📈 Age-wise Summary</a></li>
+                <li><a href="/eo-reviews" id="nav-eo-reviews">👨‍⚖️ Enquiry Officer Reviews</a></li>
+                {% if session.get('user_role') == 'admin' %}
+                <li><a href="/sync" id="nav-sync">☁️ Sync Circle Data</a></li>
+                {% endif %}
+            </ul>
+            
+            <div class="sidebar-section-title">Enquiry & Lookup</div>
+            <ul class="sidebar-menu">
+                <li><a href="/search/cpf" id="nav-cpf">🔍 CPF Search (Timeline)</a></li>
+                <li><a href="/search/name" id="nav-name">🔍 Employee Name Search</a></li>
+            </ul>
+
+            <div class="sidebar-section-title">Utility & Maintenance</div>
+            <ul class="sidebar-menu">
+                <li><a href="/monthly-editor" id="nav-monthly-editor" style="color: #9b59b6; font-weight: bold;">📅 8DC.35DC Edit & Export</a></li>
+                <li><a href="/browse/org?kind=circle" id="nav-circle">🏢 Circle Browse</a></li>
+                <li><a href="/browse/org?kind=division" id="nav-division">🏢 Division Browse</a></li>
+                <li><a href="/sheets" id="nav-structure">📄 View Sheet Data</a></li>
+                {% if is_admin %}
+                <li><a href="/import" id="nav-import" style="color: #3498db; font-weight: bold;">📥 Import Monthly Cases</a></li>
+                {% endif %}
+                <li><a href="/users" id="nav-users">👥 Manage Users</a></li>
+                <li><a href="/export" style="color: #2ecc71; font-weight: bold;">📥 Export Excel File</a></li>
+                <li style="margin-top: 20px; border-top: 1px solid #34495e; padding-top: 10px;">
+                    <a href="#" onclick="if(confirm('Are you sure you want to shutdown and exit the DAMS program?')){ document.getElementById('exit-form').submit(); }" style="color: #ff7675; border-left-color: #d63031;">❌ Exit Program</a>
+                </li>
+            </ul>
+            
+            <!-- Hidden Exit Form -->
+            <form id="exit-form" action="/exit" method="post" style="display: none;"></form>
+        </div>
+        
+        <div class="main-pane">
+            {% if message %}
+            <div class="alert {{ status }}">{{ message }}</div>
+            {% endif %}
+            
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+    
+    <div class="footer">
+        DAMS v3.0 | Standalone Offline DC & Employee Master Management System | Pune Zone MSEDCL
+    </div>
+</body>
+</html>

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% set page_title = title %}
+{% set page_subtitle = "List of active cases matching the selected period" %}
+{% block content %}
+
+<div class="panel" style="margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h2>{{ title }}</h2>
+        <div class="muted">Found <strong>{{ cases|length }}</strong> matching active case(s)</div>
+    </div>
+    <a href="/home" class="btn btn-secondary">🔙 Back to Dashboard</a>
+</div>
+
+<div class="panel">
+    <h2>Case List</h2>
+    <div class="table-wrap" style="overflow-x: auto; margin-top: 15px;">
+        <table>
+            <thead>
+                <tr>
+                    <th width="65">Sheet</th>
+                    <th width="50">Row</th>
+                    <th width="100">CPF No</th>
+                    <th>Employee Name</th>
+                    <th>Designation</th>
+                    <th>Working Place</th>
+                    <th>Case Reference</th>
+                    <th width="100">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in cases %}
+                <tr>
+                    <td><code>{{ item.sheet }}</code></td>
+                    <td><strong>{{ item.row_number }}</strong></td>
+                    <td><code>{{ item.cpf }}</code></td>
+                    <td>{{ item.name }}</td>
+                    <td><small>{{ item.designation }}</small></td>
+                    <td><small>{{ item.place }}</small></td>
+                    <td><span style="font-size: 11px;">{{ item.dc_ref }}</span></td>
+                    <td>
+                        <a href="/record/{{ item.sheet }}/{{ item.row_number }}" class="btn btn-secondary btn-sm">✏️ Edit</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="muted" style="text-align: center; padding: 20px;">No cases found for this period.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

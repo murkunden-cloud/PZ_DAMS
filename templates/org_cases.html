@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% set page_title = "Org-wise Cases" %}
+{% set page_subtitle = "View all cases by zone, circle, or division and open any row directly" %}
+{% block content %}
+<div class="panel" style="margin-bottom: 18px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2 style="margin: 0;">Browse by Zone / Circle / Division</h2>
+        <a href="/home" class="btn btn-secondary btn-sm" style="text-decoration: none;">⬅️ Back to Dashboard</a>
+    </div>
+    <form method="get" action="/browse/org">
+        <div class="row">
+            <select name="kind">
+                <option value="zone" {% if org_kind == "zone" %}selected{% endif %}>Zone</option>
+                <option value="circle" {% if org_kind == "circle" %}selected{% endif %}>Circle</option>
+                <option value="division" {% if org_kind == "division" %}selected{% endif %}>Division</option>
+            </select>
+            {% set options = zone_values if org_kind == 'zone' else circle_values if org_kind == 'circle' else division_values %}
+            <select name="value">
+                <option value="">Select {{ org_kind|capitalize }}</option>
+                {% for option in options %}
+                <option value="{{ option }}" {% if option == org_value %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit">Load Cases</button>
+    </form>
+</div>
+
+<div class="panel">
+    <h2>Matching Case Rows</h2>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Employee</th><th>CPF</th><th>Sheet</th><th>Row</th><th>DC Ref</th><th>DC Record No</th><th>DC Record Date</th><th>Facts of Case</th><th>Preview</th><th>Action</th></tr></thead>
+            <tbody>
+                {% for item in org_cases %}
+                <tr>
+                    <td>{{ item.employee_name }}</td>
+                    <td>{{ item.cpfno }}</td>
+                    <td>{{ item.sheet }}</td>
+                    <td>{{ item.row_number }}</td>
+                    <td>{{ item.dc_no }}</td>
+                    <td>{{ item.dc_record_no }}</td>
+                    <td>{{ item.dc_record_date }}</td>
+                    <td>{{ item.facts_of_case }}</td>
+                    <td>{{ item.preview|join(" | ") }}</td>
+                    <td><a class="button-link" href="/record/{{ item.sheet }}/{{ item.row_number }}">Open / Edit</a></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="10">No org-wise rows loaded yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

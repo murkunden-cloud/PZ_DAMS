@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Project specific
+runtime/
+cache/
+backups/
+reports/
+*.pkl
+*.xlsx
+*.xls
+config.ini
+
+# Build artifacts
+*.spec
+*.exe
+*.zip
+get-pip.py
+
+# Test files
+test_*.py
+diagnose*.py
+check_*.py
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak

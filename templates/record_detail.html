@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% set page_title = "Record Detail" %}
+{% set page_subtitle = "Direct record edit page with copy or move to another sheet" %}
+{% block content %}
+{% if record %}
+<div class="grid two" style="margin-bottom: 18px;">
+    <div class="panel">
+        <h2>Record Summary</h2>
+        <div class="muted">Sheet: <b>{{ record.sheet }}</b> | Row: <b>{{ record.row_number }}</b></div>
+        <div class="inline-actions" style="margin-top: 12px;">
+            <a class="button-link secondary" href="/sheet/{{ record.sheet }}">Open Sheet Structure</a>
+            <a class="button-link secondary" href="/">Back to Dashboard</a>
+        </div>
+    </div>
+    <div class="panel">
+        <h2>Copy or Move Record</h2>
+        <form method="post" action="/record/{{ record.sheet }}/{{ record.row_number }}/copy-move">
+            <div class="row">
+                <select name="target_sheet">
+                    <option value="">Select target sheet</option>
+                    {% for sheet in sheet_choices %}
+                    <option value="{{ sheet }}">{{ sheet }}</option>
+                    {% endfor %}
+                </select>
+                <select name="mode">
+                    <option value="copy">Copy</option>
+                    <option value="move">Move</option>
+                </select>
+            </div>
+            <button type="submit">Run Copy / Move</button>
+        </form>
+    </div>
+</div>
+<div class="panel" style="margin-top: 18px;">
+    <h2>Excel-Row Direct Editor ({{ record.sheet }} Row {{ record.row_number }})</h2>
+    <div class="muted" style="margin-bottom: 15px;">Edit the cell values below directly as they appear in the Excel worksheet. Empty cells can be filled as needed.</div>
+    
+    <form method="post" action="/record/{{ record.sheet }}/{{ record.row_number }}/update">
+        <div style="overflow-x: auto; margin-bottom: 20px; border: 1px solid #dcdde1; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+            <table style="width: auto; min-width: 100%; border-collapse: collapse; white-space: nowrap;">
+                <thead>
+                    <tr style="background: #edf2f7;">
+                        {% for col in record.columns_data %}
+                        <th style="padding: 10px 15px; border: 1px solid #dcdde1; text-align: left; font-size: 11px;">
+                            <span style="color: #7f8c8d; font-weight: normal; font-size: 10px;">Col {{ col.column }}</span><br>
+                            <span style="color: #2c3e50; font-weight: 600;">{{ col.header }}</span>
+                        </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        {% for col in record.columns_data %}
+                        <td style="padding: 10px; border: 1px solid #dcdde1; background: #fff;">
+                            {% if col.is_dispatch %}
+                            <!-- Split Dispatch Input -->
+                            <div style="display: flex; flex-direction: column; gap: 4px; width: 250px;">
+                                <input type="text" id="dispnum_input" name="cell_dispnum_{{ col.column }}" value="{{ col.disp_num }}" placeholder="Dispatch No." style="padding: 6px; border: 1px solid #cbd5e0; border-radius: 4px; font-family: inherit;">
+                                <input type="text" id="dispdate_input" name="cell_dispdate_{{ col.column }}" value="{{ col.disp_date }}" placeholder="Date (e.g. 10.06.2026)" style="padding: 6px; border: 1px solid #cbd5e0; border-radius: 4px; font-family: inherit;">
+                            </div>
+                            {% elif col.is_extracted %}
+                            <!-- Extracted DC No with Re-extract Button -->
+                            <div style="display: flex; align-items: center; gap: 6px; width: 250px;">
+                                <input type="text" id="extracted_dc_input" name="cell_{{ col.column }}" value="{{ col.value }}" style="flex: 1; padding: 6px; border: 1px solid #cbd5e0; border-radius: 4px; font-family: inherit;">
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="runReExtraction()" style="padding: 4px 8px; font-size: 11px;">⚡ Re-extract</button>
+                            </div>
+                            {% elif col.column == 1 %}
+                            <!-- Column 1 is Serial Number (Sr. No.), make it read-only -->
+                            <input type="text" name="cell_{{ col.column }}" value="{{ col.value }}" style="width: 70px; padding: 6px; border: 1px solid #cbd5e0; border-radius: 4px; background: #f8fafc; font-weight: bold; text-align: center;" readonly>
+                            {% elif col.column == 3 or col.column == 4 %}
+                            <!-- CPF/Name Column -->
+                            <input type="text" name="cell_{{ col.column }}" value="{{ col.value }}" style="width: 180px; padding: 6px; border: 1px solid #cbd5e0; border-radius: 4px; font-family: inherit;">
+                            {% else %}
+                            <!-- Regular Data Cells -->
+                            <input type="text" name="cell_{{ col.column }}" value="{{ col.value }}" style="width: 250px; padding: 6px; border: 1px solid #cbd5e0; border-radius: 4px; font-family: inherit;">
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between;">
+            <div style="display: flex; gap: 10px;">
+                <button type="submit" class="btn btn-primary">💾 Save Excel Row</button>
+                
+                {% if record.sheet in ["6DC", "22DC", "23DC", "12DC", "13DC"] %}
+                <a href="/case/close/{{ record.sheet }}/{{ record.row_number }}" class="btn btn-warning">❌ Close & Move Case</a>
+                {% endif %}
+            </div>
+            
+            <div>
+                <!-- Delete Option -->
+                <button type="button" class="btn btn-danger" onclick="if(confirm('Are you sure you want to permanently delete this row? This cannot be undone.')){ document.getElementById('delete-form').submit(); }">🗑️ Delete Row</button>
+            </div>
+        </div>
+    </form>
+    
+    <!-- Hidden Delete Form -->
+    <form id="delete-form" method="post" action="/record/{{ record.sheet }}/{{ record.row_number }}/delete" style="display: none;"></form>
+</div>
+
+<script>
+function runReExtraction() {
+    const dispNumEl = document.getElementById('dispnum_input');
+    const extractedEl = document.getElementById('extracted_dc_input');
+    if (!dispNumEl || !extractedEl) return;
+    
+    const dispatchText = dispNumEl.value;
+    const extracted = jsExtractDc(dispatchText);
+    extractedEl.value = extracted;
+}
+
+function jsExtractDc(dispatchText) {
+    if (!dispatchText) return "";
+    dispatchText = dispatchText.trim();
+    
+    // pattern 1: /(\d+)\s*$/
+    let match = dispatchText.match(/\/(\d+)\s*$/);
+    if (match) {
+        let num = match[1];
+        let numVal = parseInt(num, 10);
+        if (!(numVal >= 1990 && numVal <= 2035)) return num;
+    }
+    // pattern 2: /[Ll]etter\s*[Nn]o.*?(\d+)/
+    match = dispatchText.match(/[Ll]etter\s*[Nn]o.*?(\d+)/i);
+    if (match) {
+        let num = match[1];
+        let numVal = parseInt(num, 10);
+        if (!(numVal >= 1990 && numVal <= 2035)) return num;
+    }
+    // pattern 3: /(\d{3,})/
+    match = dispatchText.match(/\/(\d{3,})\//);
+    if (match) {
+        let num = match[1];
+        let numVal = parseInt(num, 10);
+        if (!(numVal >= 1990 && numVal <= 2035)) return num;
+    }
+    // pattern 4: /(\d{3,6})\s*$/
+    match = dispatchText.match(/(\d{3,6})\s*$/);
+    if (match) {
+        let num = match[1];
+        let numVal = parseInt(num, 10);
+        if (!(numVal >= 1990 && numVal <= 2035)) return num;
+    }
+    // fallback: find all numbers, return the longest one
+    let numbers = dispatchText.match(/\d+/g);
+    if (numbers && numbers.length > 0) {
+        let longest = "";
+        for (let num of numbers) {
+            if (num.length > longest.length) {
+                longest = num;
+            }
+        }
+        return longest;
+    }
+    return dispatchText.substring(0, 20);
+}
+</script>
+{% else %}
+<div class="panel">
+    <h2>Record not available</h2>
+    <div class="muted">Open a record from CPF search, org-wise case list, or name search.</div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+{% set page_title = "DAMS - Initiate New DC Case" %}
+{% block content %}
+
+<div class="window-panel" style="max-width: 800px; margin: 0 auto;">
+    <div class="window-header">
+        <span>Initiate New Disciplinary Case (Auto Mode)</span>
+        <a href="/home" class="btn btn-secondary btn-sm">🔙 Cancel</a>
+    </div>
+    <div class="window-body">
+        
+        <form action="/case/initiate" method="post" id="initiate-form">
+            
+            <!-- Step 1: CPF Verification -->
+            <fieldset style="border: 1px solid #dcdde1; border-radius: 4px; padding: 15px; margin-bottom: 20px; background: #fafbfc;">
+                <legend style="font-size: 13px; font-weight: 600; padding: 0 5px; color: #1e3a5f;">Employee Master Verification</legend>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="cpf">Employee CPF Number <span style="color:red;">*</span></label>
+                        <div style="display: flex; gap: 5px;">
+                            <input type="text" id="cpf" name="cpf" placeholder="Enter CPF (e.g. 2208334)" required autocomplete="off">
+                            <button type="button" id="btn-verify" class="btn btn-primary" style="padding: 8px 15px;">Verify</button>
+                        </div>
+                        <small style="font-size: 11px; color: #7f8c8d;">Type 8-digit CPF and click Verify</small>
+                    </div>
+                    <div class="form-group" style="justify-content: center;">
+                        <div id="verify-status" style="display: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; text-align: center;"></div>
+                    </div>
+                </div>
+            </fieldset>
+
+            <!-- Step 2: Employee Details (Read-only / Auto-filled) -->
+            <fieldset style="border: 1px solid #dcdde1; border-radius: 4px; padding: 15px; margin-bottom: 20px; background: #fafbfc;">
+                <legend style="font-size: 13px; font-weight: 600; padding: 0 5px; color: #1e3a5f;">Employee Details (Auto-filled)</legend>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="emp_name">Full Name</label>
+                        <input type="text" id="emp_name" readonly style="background: #e9ecef; cursor: not-allowed;" placeholder="Verify CPF to fill">
+                    </div>
+                    <div class="form-group">
+                        <label for="emp_desg">Designation</label>
+                        <input type="text" id="emp_desg" readonly style="background: #e9ecef; cursor: not-allowed;" placeholder="Verify CPF to fill">
+                    </div>
+                    <div class="form-group">
+                        <label for="emp_pg">Pay Group / Class</label>
+                        <input type="text" id="emp_pg" readonly style="background: #e9ecef; cursor: not-allowed;" placeholder="Verify CPF to fill">
+                    </div>
+                    <div class="form-group">
+                        <label for="emp_seniority">Seniority Level</label>
+                        <input type="text" id="emp_seniority" readonly style="background: #e9ecef; cursor: not-allowed; font-weight: bold; color: #1e3a5f;" placeholder="Verify CPF to fill">
+                    </div>
+                    <div class="form-group">
+                        <label for="emp_retirement">DOB / Retirement</label>
+                        <input type="text" id="emp_retirement" readonly style="background: #e9ecef; cursor: not-allowed; font-weight: bold; color: #d35400;" placeholder="Verify CPF to fill">
+                    </div>
+                    <div class="form-group">
+                        <label for="emp_place">Place of Posting</label>
+                        <input type="text" id="emp_place" readonly style="background: #e9ecef; cursor: not-allowed;" placeholder="Verify CPF to fill">
+                    </div>
+                    <div class="form-group">
+                        <label for="emp_circle">Circle</label>
+                        <input type="text" id="emp_circle" readonly style="background: #e9ecef; cursor: not-allowed;" placeholder="Verify CPF to fill">
+                    </div>
+                    <div class="form-group">
+                        <label for="emp_division">Division</label>
+                        <input type="text" id="emp_division" readonly style="background: #e9ecef; cursor: not-allowed;" placeholder="Verify CPF to fill">
+                    </div>
+                </div>
+            </fieldset>
+
+            <!-- Step 3: Case details -->
+            <fieldset style="border: 1px solid #dcdde1; border-radius: 4px; padding: 15px; margin-bottom: 20px;">
+                <legend style="font-size: 13px; font-weight: 600; padding: 0 5px; color: #1e3a5f;">Case Configuration Details</legend>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="case_type">Case Severity Type <span style="color:red;">*</span></label>
+                        <select id="case_type" name="case_type" required>
+                            <option value="">Select Case Type</option>
+                            <option value="minor">Minor DC (Explanation/SCN)</option>
+                            <option value="major">Major DC (Chargesheet)</option>
+                            <option value="suspension">Suspension Action</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Dispatch Prefix</label>
+                        <select id="helper-prefix">
+                            <option value="">-- Select Prefix --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>DC Number</label>
+                        <input type="text" id="helper-dc" placeholder="e.g. 123">
+                    </div>
+                    <div class="form-group">
+                        <label>DC Date</label>
+                        <input type="date" id="helper-date">
+                    </div>
+                    <div class="form-group">
+                        <label for="dispatch">Final Letter / Dispatch Ref <span style="color:red;">*</span></label>
+                        <input type="text" id="dispatch" name="dispatch" placeholder="Auto-generated or type here..." required>
+                    </div>
+                    <div class="form-group">
+                        <label for="vs_ref">V&S / CIO Report Reference (If any)</label>
+                        <input type="text" id="vs_ref" name="vs_ref" placeholder="e.g. ED/S&E/PUNE/Detailed II/2026/45 dtd 02.05.2026">
+                    </div>
+                    <div class="form-group susp-fields" style="display: none;">
+                        <label for="susp_order">Suspension Order Details</label>
+                        <input type="text" id="susp_order" name="susp_order" placeholder="e.g. Order No. 123">
+                    </div>
+                    <div class="form-group susp-fields" style="display: none;">
+                        <label for="susp_date">Suspension Effective Date</label>
+                        <input type="date" id="susp_date" name="susp_date">
+                    </div>
+                    <div class="form-group">
+                        <label for="status">Initial Status / Explanation Stage <span style="color:red;">*</span></label>
+                        <select id="status" name="status" required>
+                            <option value="Explanation called">Explanation called</option>
+                            <option value="Show Cause Notice issued">Show Cause Notice issued</option>
+                            <option value="Chargesheet Issued">Chargesheet Issued</option>
+                            <option value="Suspended">Suspended</option>
+                            <option value="Pending">Pending</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="facts">Descriptive Facts of the Case (In Brief)</label>
+                        <textarea id="facts" name="facts" placeholder="Enter case details, negligence issues, or chargesheet brief..."></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="remarks">General Remarks</label>
+                        <textarea id="remarks" name="remarks" placeholder="Enter any extra notes..."></textarea>
+                    </div>
+                </div>
+            </fieldset>
+
+            <div class="form-actions">
+                <button type="reset" class="btn btn-secondary">Reset Form</button>
+                <button type="submit" id="btn-submit" class="btn btn-success" disabled>🚀 Initiate Case</button>
+            </div>
+            
+        </form>
+
+    </div>
+</div>
+
+<script>
+    // Highlight sidebar nav
+    document.querySelectorAll('.sidebar-menu a').forEach(el => el.classList.remove('active'));
+    document.getElementById('nav-initiate').classList.add('active');
+
+    const cpfInput = document.getElementById('cpf');
+    const verifyBtn = document.getElementById('btn-verify');
+    const statusDiv = document.getElementById('verify-status');
+    const submitBtn = document.getElementById('btn-submit');
+
+    const empName = document.getElementById('emp_name');
+    const empDesg = document.getElementById('emp_desg');
+    const empPg = document.getElementById('emp_pg');
+    const empPlace = document.getElementById('emp_place');
+    const empCircle = document.getElementById('emp_circle');
+    const empDivision = document.getElementById('emp_division');
+
+    function resetEmployeeFields() {
+        empName.value = '';
+        empDesg.value = '';
+        empPg.value = '';
+        document.getElementById('emp_seniority').value = '';
+        document.getElementById('emp_retirement').value = '';
+        empPlace.value = '';
+        empCircle.value = '';
+        empDivision.value = '';
+        submitBtn.disabled = true;
+    }
+
+    async function verifyCPF() {
+        const cpf = cpfInput.value.trim();
+        if (!cpf) {
+            alert('Please enter a CPF number first.');
+            return;
+        }
+
+        statusDiv.style.display = 'block';
+        statusDiv.style.background = '#e2e7eb';
+        statusDiv.style.color = '#333';
+        statusDiv.innerText = 'Verifying with Master file...';
+
+        try {
+            const response = await fetch('/api/lookup-cpf/' + cpf);
+            const res = await response.json();
+            
+            if (res.success) {
+                const emp = res.employee;
+                empName.value = emp.name;
+                document.getElementById('emp_desg').value = emp.designation || "";
+                document.getElementById('emp_pg').value = emp.paygroup || "";
+                document.getElementById('emp_seniority').value = emp.seniority || "";
+                
+                const dob = emp.brthdt || "";
+                const ret = emp.dtofretir || "";
+                let retStr = "";
+                if(dob || ret) { retStr = (dob + " / " + ret).replace(/^ \/ | \/ $/g, ''); }
+                document.getElementById('emp_retirement').value = retStr;
+                
+                document.getElementById('emp_place').value = emp.place || "";
+                empCircle.value = emp.circle;
+                empDivision.value = emp.division;
+
+                statusDiv.style.background = '#dff0d8';
+                statusDiv.style.color = '#3c763d';
+                statusDiv.innerText = '✅ Employee Verified: ' + emp.name;
+                submitBtn.disabled = false;
+            } else {
+                resetEmployeeFields();
+                statusDiv.style.background = '#f2dede';
+                statusDiv.style.color = '#a94442';
+                statusDiv.innerText = '❌ Not Found: ' + res.error;
+            }
+        } catch (error) {
+            console.error(error);
+            resetEmployeeFields();
+            statusDiv.style.background = '#f2dede';
+            statusDiv.style.color = '#a94442';
+            statusDiv.innerText = '⚠️ Connection error to local database.';
+        }
+    }
+
+    // Trigger on button click
+    verifyBtn.addEventListener('click', verifyCPF);
+
+    // Trigger on enter key in CPF input
+    cpfInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            verifyCPF();
+        }
+    });
+
+    // Reset verification if CPF changes
+    cpfInput.addEventListener('input', function() {
+        if (submitBtn.disabled === false) {
+            resetEmployeeFields();
+            statusDiv.style.display = 'none';
+        }
+    });
+    
+    // Dispatch Builder Logic
+    function updateDispatchHelper() {
+        const prefix = document.getElementById('helper-prefix').value;
+        const dc = document.getElementById('helper-dc').value;
+        const dt = document.getElementById('helper-date').value;
+        
+        let combined = prefix;
+        if(dc) combined += "/" + dc;
+        if(dt) {
+            // Convert yyyy-mm-dd to dd.mm.yyyy
+            const parts = dt.split("-");
+            if(parts.length === 3) {
+                combined += ` dtd ${parts[2]}.${parts[1]}.${parts[0]}`;
+            }
+        }
+        
+        if (combined) {
+            document.getElementById('dispatch').value = combined;
+        }
+    }
+
+    document.getElementById('helper-prefix').addEventListener('change', updateDispatchHelper);
+    document.getElementById('helper-dc').addEventListener('input', updateDispatchHelper);
+    document.getElementById('helper-date').addEventListener('change', updateDispatchHelper);
+
+    // Load prefixes
+    fetch('/api/dispatch-prefixes')
+        .then(res => res.json())
+        .then(data => {
+            if(data.prefixes) {
+                const sel = document.getElementById('helper-prefix');
+                data.prefixes.forEach(p => {
+                    let opt = document.createElement('option');
+                    if (typeof p === 'object' && p !== null) {
+                        opt.value = p.value;
+                        opt.textContent = p.label;
+                    } else {
+                        opt.value = p;
+                        opt.textContent = p;
+                    }
+                    sel.appendChild(opt);
+                });
+            }
+        });
+        
+    // Toggle suspension fields
+    document.getElementById('case_type').addEventListener('change', function(e) {
+        const isSusp = e.target.value === 'suspension';
+        document.querySelectorAll('.susp-fields').forEach(el => {
+            el.style.display = isSusp ? 'block' : 'none';
+        });
+    });
+</script>
+{% endblock %}

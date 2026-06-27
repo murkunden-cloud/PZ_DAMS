@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% set page_title = "CPF & DC Search" %}
+{% set page_subtitle = "Employee details and all linked DC records matching CPF or DC reference numbers" %}
+{% block content %}
+<div class="panel" style="margin-bottom: 18px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2 style="margin: 0;">Search by CPF or DC Number</h2>
+        <a href="/home" class="btn btn-secondary btn-sm" style="text-decoration: none;">⬅️ Back to Dashboard</a>
+    </div>
+    <form method="get" action="/search/cpf">
+        <input name="cpfno" value="{{ cpf_result.cpfno if cpf_result else '' }}" placeholder="Enter CPF or DC/Dispatch Number" style="width: 300px; padding: 6px 10px; border-radius: 4px; border: 1px solid #ccc;">
+        <button type="submit">Search</button>
+    </form>
+</div>
+
+<div class="grid two">
+    <div class="panel">
+        <h2>Employee Details</h2>
+        {% if cpf_result and cpf_result.employee %}
+        <table>
+            <tbody>
+                <tr><th>Name</th><td>{{ cpf_result.employee.EmployeeName }}</td></tr>
+                <tr><th>CPF</th><td>{{ cpf_result.employee.CPFNO }}</td></tr>
+                <tr><th>Designation</th><td>{{ cpf_result.employee.Designation }}</td></tr>
+                <tr><th>Office</th><td>{{ cpf_result.employee.PresentOffice }}</td></tr>
+                <tr><th>Zone</th><td>{{ cpf_result.employee.PresentZone }}</td></tr>
+                <tr><th>Circle</th><td>{{ cpf_result.employee.PresentCircle }}</td></tr>
+                <tr><th>Division</th><td>{{ cpf_result.employee.presentDivision }}</td></tr>
+            </tbody>
+        </table>
+        {% else %}
+        <div class="muted">Search a specific CPF to display complete employee details.</div>
+        {% endif %}
+    </div>
+    <div class="panel">
+        <h2>Quick Actions</h2>
+        {% if cpf_result and cpf_result.employee %}
+        <div class="inline-actions">
+            <a class="button-link secondary" href="/browse/org?kind=circle&value={{ cpf_result.employee.PresentCircle }}">Open Circle Cases</a>
+            <a class="button-link secondary" href="/browse/org?kind=division&value={{ cpf_result.employee.presentDivision }}">Open Division Cases</a>
+        </div>
+        {% else %}
+        <div class="muted">Search first, then jump to the employee's circle or division case page.</div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="panel" style="margin-top: 18px;">
+    <h2>DC Record List</h2>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Sheet</th>
+                    <th>Row</th>
+                    <th>Employee Name</th>
+                    <th>CPF</th>
+                    <th>DC Record No</th>
+                    <th>DC Record Date</th>
+                    <th>Facts of Case</th>
+                    <th>Dispatch / Reference</th>
+                    <th>Last Updated</th>
+                    <th>Remarks</th>
+                    <th width="150">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if cpf_result %}
+                {% if cpf_result.cases %}
+                {% for item in cpf_result.cases %}
+                <tr>
+                    <td>
+                        <code>{{ item.sheet }}</code>
+                        {% if item.source == 'Archive' %}
+                        <div style="margin-top: 4px;"><span style="background-color: #e67e22; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold;">ARCHIVED</span></div>
+                        {% endif %}
+                    </td>
+                    <td><strong>{{ item.row_number }}</strong></td>
+                    <td>{{ item.employee_name or 'N/A' }}</td>
+                    <td><code>{{ item.cpfno or 'N/A' }}</code></td>
+                    <td><small>{{ item.dc_record_no or 'N/A' }}</small></td>
+                    <td><small>{{ item.dc_record_date or 'N/A' }}</small></td>
+                    <td><small>{{ item.facts_of_case or 'N/A' }}</small></td>
+                    <td>{{ item.dispatch_ref }}</td>
+                    <td><small>{{ item.last_updated or 'N/A' }}</small></td>
+                    <td><small>{{ item.remarks or 'N/A' }}</small></td>
+                    <td>
+                        <div style="display: flex; gap: 5px;">
+                            <a class="btn btn-secondary btn-sm" href="/record/{{ item.sheet }}/{{ item.row_number }}">✏️ Edit</a>
+                            {% if item.sheet in ["6DC", "22DC", "23DC"] %}
+                            <a class="btn btn-danger btn-sm" href="/case/close/{{ item.sheet }}/{{ item.row_number }}" style="background-color: #e74c3c; border-color: #e74c3c; color: white;">🔒 Close</a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr><td colspan="11" class="muted">No DC rows found matching this search.</td></tr>
+                {% endif %}
+                {% else %}
+                <tr><td colspan="11" class="muted">No search query yet.</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // Highlight active sidebar navigation
+    document.querySelectorAll('.sidebar-menu a').forEach(el => el.classList.remove('active'));
+    document.getElementById('nav-cpf').classList.add('active');
+</script>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% set page_title = "Import Monthly Cases" %}
+{% block content %}
+
+<div class="window-panel">
+    <div class="window-header">
+        <span>📥 Import Monthly Cases</span>
+    </div>
+    <div class="window-body">
+        <div style="margin-bottom: 20px;">
+            <h3 style="color: #2c3e50; margin-bottom: 10px;">Monthly Case Import Process</h3>
+            <p style="color: #7f8c8d; margin-bottom: 15px;">
+                Upload Excel file with new monthly cases. The system will:
+            </p>
+            <ul style="color: #7f8c8d; margin-left: 20px; margin-bottom: 20px;">
+                <li>Clear existing data from 4DC, 5DC, 20DC, 21DC (with backup)</li>
+                <li>Import new data into 4DC, 5DC, 20DC, 21DC</li>
+                <li>Add new cases to ongoing sheets (6DC, 22DC, 23DC)</li>
+                <li>Validate CPF numbers against master employee file</li>
+            </ul>
+        </div>
+
+        <form method="post" action="/import" enctype="multipart/form-data">
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>Upload Excel File</label>
+                <input type="file" name="file" accept=".xlsx,.xls" required style="width: 100%; padding: 8px; border: 1px solid #dcdde1; border-radius: 4px;">
+            </div>
+
+            <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-bottom: 20px;">
+                <strong style="color: #856404;">Required Sheets:</strong>
+                <ul style="color: #856404; margin: 10px 0 0 20px;">
+                    <li>4DC - Minor DC Statewise</li>
+                    <li>5DC - Minor DC Circlewise</li>
+                    <li>20DC - Major DC Statewise</li>
+                    <li>21DC - Major DC Circlewise</li>
+                </ul>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%;">📥 Import Cases</button>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

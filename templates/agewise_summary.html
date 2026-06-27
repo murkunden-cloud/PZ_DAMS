@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% set page_title = "Age-wise Case Summary" %}
+{% set page_subtitle = "Detailed overview of pending cases grouped by duration and organization unit" %}
+{% block content %}
+
+<!-- Print Stylesheet -->
+<style>
+    .no-print-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        background: #fff;
+        padding: 15px 20px;
+        border: 1px solid #dcdde1;
+        border-radius: 6px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+    }
+    
+    .totals-row {
+        font-weight: bold;
+        background-color: #f8fafc;
+        border-top: 2px solid #cbd5e0;
+        border-bottom: 2px double #2d3748;
+    }
+    
+    .count-link { font-weight: 600; color: #2980b9; text-decoration: none; }
+    .count-link:hover { text-decoration: underline; }
+    
+    @media print {
+        .sidebar, .top-bar, .footer, .btn, .no-print, .no-print-header {
+            display: none !important;
+        }
+        .main-pane {
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+            background: #fff !important;
+        }
+        body {
+            background: #fff !important;
+            color: #000 !important;
+        }
+        .window-panel {
+            border: none !important;
+            box-shadow: none !important;
+            margin-bottom: 30px !important;
+            page-break-inside: avoid;
+        }
+        .window-header {
+            background: none !important;
+            border-bottom: 2px solid #000 !important;
+            color: #000 !important;
+            padding: 5px 0 !important;
+            font-size: 16px !important;
+        }
+        table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            margin-top: 10px !important;
+        }
+        th, td {
+            border: 1px solid #000 !important;
+            padding: 6px 8px !important;
+            font-size: 11px !important;
+        }
+        th {
+            background: #edf2f7 !important;
+            color: #000 !important;
+        }
+        .totals-row {
+            background-color: #f8fafc !important;
+            border-top: 2px solid #000 !important;
+            border-bottom: 2px double #000 !important;
+        }
+        .count-link { color: #000 !important; text-decoration: none !important; font-weight: normal !important; pointer-events: none; }
+    }
+</style>
+
+{% macro render_count(org_kind, org_name, age_group, count) %}
+    {% if count > 0 %}
+        <a href="/cases/agewise?org_kind={{ org_kind }}&org_value={{ org_name|urlencode }}&age_group={{ age_group }}" class="count-link">{{ count }}</a>
+    {% else %}
+        {{ count }}
+    {% endif %}
+{% endmacro %}
+
+<div class="no-print-header">
+    <div>
+        <h2 style="margin: 0; font-size: 18px; color: #2c3e50;">📅 Case Age-wise Summary</h2>
+        <div class="muted" style="font-size: 12px; margin-top: 2px;">Summary Sheet divided by Circle / Division-wise aging segments</div>
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <button onclick="window.print()" class="btn btn-primary">🖨️ Print as PDF</button>
+        <a href="/export/agewise-excel" class="btn btn-success">📥 Export to Excel</a>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr; gap: 25px;">
+    <!-- Circle-wise Table -->
+    <div class="window-panel">
+        <div class="window-header" style="background: #1e3a5f; color: #fff;">
+            <span>🏢 Circle-wise Age Analysis</span>
+        </div>
+        <div class="window-body" style="padding: 15px;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #edf2f7;">
+                        <th>Circle Name</th>
+                        <th style="text-align: right;">Pending &lt; 6 Months</th>
+                        <th style="text-align: right;">Pending 6 - 12 Months</th>
+                        <th style="text-align: right;">Pending 1 - 2 Years</th>
+                        <th style="text-align: right;">Pending &gt; 2 Years</th>
+                        <th style="text-align: right;">Unknown Date</th>
+                        <th style="text-align: right;">Total Pending</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in summary.circle %}
+                    <tr>
+                        <td><strong>{{ item.name }}</strong></td>
+                        <td style="text-align: right;">{{ render_count('circle', item.name, 'less_6m', item.less_6m) }}</td>
+                        <td style="text-align: right;">{{ render_count('circle', item.name, 'six_to_twelve', item.six_to_twelve) }}</td>
+                        <td style="text-align: right;">{{ render_count('circle', item.name, 'one_to_two_yr', item.one_to_two_yr) }}</td>
+                        <td style="text-align: right;">{{ render_count('circle', item.name, 'more_two_yr', item.more_two_yr) }}</td>
+                        <td style="text-align: right; color: #7f8c8d;">{{ render_count('circle', item.name, 'unknown_date', item.unknown_date) }}</td>
+                        <td style="text-align: right; font-weight: bold; background-color: #fcfcfc;">{{ item.total }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="7" class="muted">No circle wise data available.</td></tr>
+                    {% endfor %}
+                    
+                    {% if summary.circle %}
+                    <tr class="totals-row">
+                        <td>Grand Total</td>
+                        <td style="text-align: right;">{{ summary.circle | map(attribute='less_6m') | sum }}</td>
+                        <td style="text-align: right;">{{ summary.circle | map(attribute='six_to_twelve') | sum }}</td>
+                        <td style="text-align: right;">{{ summary.circle | map(attribute='one_to_two_yr') | sum }}</td>
+                        <td style="text-align: right;">{{ summary.circle | map(attribute='more_two_yr') | sum }}</td>
+                        <td style="text-align: right;">{{ summary.circle | map(attribute='unknown_date') | sum }}</td>
+                        <td style="text-align: right;">{{ summary.circle | map(attribute='total') | sum }}</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Division-wise Table -->
+    <div class="window-panel">
+        <div class="window-header" style="background: #2d5a88; color: #fff;">
+            <span>🏢 Division-wise Age Analysis</span>
+        </div>
+        <div class="window-body" style="padding: 15px; max-height: 500px; overflow-y: auto;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #edf2f7;">
+                        <th>Division Name</th>
+                        <th style="text-align: right;">Pending &lt; 6 Months</th>
+                        <th style="text-align: right;">Pending 6 - 12 Months</th>
+                        <th style="text-align: right;">Pending 1 - 2 Years</th>
+                        <th style="text-align: right;">Pending &gt; 2 Years</th>
+                        <th style="text-align: right;">Unknown Date</th>
+                        <th style="text-align: right;">Total Pending</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in summary.division %}
+                    <tr>
+                        <td><strong>{{ item.name }}</strong></td>
+                        <td style="text-align: right;">{{ render_count('division', item.name, 'less_6m', item.less_6m) }}</td>
+                        <td style="text-align: right;">{{ render_count('division', item.name, 'six_to_twelve', item.six_to_twelve) }}</td>
+                        <td style="text-align: right;">{{ render_count('division', item.name, 'one_to_two_yr', item.one_to_two_yr) }}</td>
+                        <td style="text-align: right;">{{ render_count('division', item.name, 'more_two_yr', item.more_two_yr) }}</td>
+                        <td style="text-align: right; color: #7f8c8d;">{{ render_count('division', item.name, 'unknown_date', item.unknown_date) }}</td>
+                        <td style="text-align: right; font-weight: bold; background-color: #fcfcfc;">{{ item.total }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="7" class="muted">No division wise data available.</td></tr>
+                    {% endfor %}
+                    
+                    {% if summary.division %}
+                    <tr class="totals-row">
+                        <td>Grand Total</td>
+                        <td style="text-align: right;">{{ summary.division | map(attribute='less_6m') | sum }}</td>
+                        <td style="text-align: right;">{{ summary.division | map(attribute='six_to_twelve') | sum }}</td>
+                        <td style="text-align: right;">{{ summary.division | map(attribute='one_to_two_yr') | sum }}</td>
+                        <td style="text-align: right;">{{ summary.division | map(attribute='more_two_yr') | sum }}</td>
+                        <td style="text-align: right;">{{ summary.division | map(attribute='unknown_date') | sum }}</td>
+                        <td style="text-align: right;">{{ summary.division | map(attribute='total') | sum }}</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Highlight sidebar navigation
+    document.querySelectorAll('.sidebar-menu a').forEach(el => el.classList.remove('active'));
+    const navAgewise = document.getElementById('nav-agewise');
+    if (navAgewise) navAgewise.classList.add('active');
+</script>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% set page_title = "DAMS - Finalize Case Closure" %}
+{% block content %}
+
+<div class="window-panel" style="max-width: 800px; margin: 0 auto;">
+    <div class="window-header">
+        <span>Close Case & Move to Archives</span>
+        <a href="/home" class="btn btn-secondary btn-sm">🔙 Cancel</a>
+    </div>
+    <div class="window-body">
+        
+        <!-- Case Preview Panel -->
+        <fieldset style="border: 1px solid #dcdde1; border-radius: 4px; padding: 15px; margin-bottom: 25px; background: #fafbfc;">
+            <legend style="font-size: 13px; font-weight: 600; padding: 0 5px; color: #7f8c8d;">Ongoing Case Data (Source: {{ sheet_name }} Row {{ row_number }})</legend>
+            
+            <div style="display: grid; grid-template-columns: 120px 1fr; gap: 10px; font-size: 13px;">
+                <strong>CPF Account:</strong> <code>{{ employee.CPFNO if employee else 'N/A' }}</code>
+                <strong>Employee Name:</strong> <span>{{ employee.EmployeeName if employee else 'N/A' }}</span>
+                <strong>Designation:</strong> <span>{{ employee.Designation if employee else 'N/A' }}</span>
+                <strong>Work Place:</strong> <span>{{ employee.PresentOffice if employee else 'N/A' }}</span>
+                <strong>Case Reference:</strong> <span>{{ record.row_values[editor_dc_col - 1] if record and editor_dc_col <= record.row_values|length else 'N/A' }}</span>
+                <strong>Brief Facts:</strong> <span style="color: #555; font-style: italic;">{{ record.row_values[editor_facts_col - 1] if record and editor_facts_col <= record.row_values|length else 'N/A' }}</span>
+            </div>
+        </fieldset>
+
+        <!-- Closure Details Entry -->
+        <form action="/case/close/{{ sheet_name }}/{{ row_number }}" method="post" onsubmit="return confirm('Are you sure you want to CLOSE this ongoing case? It will be moved to closed sheets in the Excel workbook.')">
+            
+            <fieldset style="border: 1px solid #dcdde1; border-radius: 4px; padding: 15px; margin-bottom: 25px;">
+                <legend style="font-size: 13px; font-weight: 600; padding: 0 5px; color: #1e3a5f;">Closure Configuration & Metadata</legend>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="outcome">Outcome of Disciplinary Action <span style="color:red;">*</span></label>
+                        <select id="outcome" name="outcome" required>
+                            <option value="">Select Outcome</option>
+                            <option value="Exoneration">Exoneration (Exonerated/Closed)</option>
+                            <option value="Warning">Warning Issued</option>
+                            <option value="Reprimand">Reprimand</option>
+                            <option value="Fine">Fine imposed</option>
+                            <option value="Recovery of loss">Recovery of loss</option>
+                            <option value="Withholding of increment">Withholding of increment</option>
+                            <option value="Stoppage of promotion">Stoppage of promotion</option>
+                            <option value="Reversion to lower post">Reversion to lower post</option>
+                            <option value="Removal from service">Removal from service / Dismissal</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="close_ref">Decision Reference No. <span style="color:red;">*</span></label>
+                        <input type="text" id="close_ref" name="close_ref" placeholder="e.g. CE/PZ/HR/Conf/SCN/2026/255" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="close_date">Decision/Close Date <span style="color:red;">*</span></label>
+                        <input type="date" id="close_date" name="close_date" required>
+                    </div>
+                    
+                    <div class="form-group full-width">
+                        <label for="punishment">Details of Punishment / Penalty details (If any)</label>
+                        <textarea id="punishment" name="punishment" placeholder="e.g. Fine of 1/3rd amount from monthly gross salary / Warning letter issued..."></textarea>
+                    </div>
+                </div>
+            </fieldset>
+
+            <div class="form-actions">
+                <a href="/home" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-danger">🔒 Finalize Closure & Move</button>
+            </div>
+            
+        </form>
+
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% set page_title = "DC Manager Dashboard" %}
+{% set page_subtitle = "Home page with summary, quick search, add record, and exports" %}
+{% block content %}
+<div class="panel" style="margin-bottom: 18px;">
+    <h2>Source Files</h2>
+    <div class="muted">DC Workbook: <b>{{ files_status.dc_file }}</b> | {{ "Found" if files_status.dc_exists else "Missing" }}</div>
+    <div class="muted">Employee Master: <b>{{ files_status.emp_file }}</b> | {{ "Found" if files_status.emp_exists else "Missing" }}</div>
+</div>
+
+<div class="grid cards" style="margin-bottom: 18px;">
+    <div class="card minor"><h3>Minor DC Ongoing</h3><div class="num">{{ dashboard.pendency.minor.total }}</div><div class="muted">SW {{ dashboard.pendency.minor.sw }} | CW {{ dashboard.pendency.minor.cw }}</div></div>
+    <div class="card major"><h3>Major DC All Cases</h3><div class="num">{{ dashboard.pendency.major.total }}</div><div class="muted">SW {{ dashboard.pendency.major.sw }} | CW {{ dashboard.pendency.major.cw }}</div></div>
+    <div class="card susp"><h3>Suspension Active</h3><div class="num">{{ dashboard.pendency.suspension.total }}</div><div class="muted">SW {{ dashboard.pendency.suspension.sw }} | CW {{ dashboard.pendency.suspension.cw }}</div></div>
+    <div class="card rev"><h3>Suspension Revoked</h3><div class="num">{{ dashboard.pendency.revoke.total }}</div><div class="muted">Current records</div></div>
+    <div class="card appeal"><h3>Appeal Disposed</h3><div class="num">{{ dashboard.pendency.appeal.total }}</div><div class="muted">SW {{ dashboard.pendency.appeal.sw }} | CW {{ dashboard.pendency.appeal.cw }}</div></div>
+    <div class="card emp"><h3>Total Employees</h3><div class="num">{{ dashboard.employee_count }}</div><div class="muted">Master employee file</div></div>
+</div>
+
+<div class="grid three" style="margin-bottom: 18px;">
+    <div class="panel">
+        <h2>Top Zones</h2>
+        <ol>
+            {% for item in dashboard.org_summary.zone[:8] %}
+            <li>{{ item.name }}: {{ item.count }}</li>
+            {% else %}
+            <li>No zone data</li>
+            {% endfor %}
+        </ol>
+    </div>
+    <div class="panel">
+        <h2>Top Circles</h2>
+        <ol>
+            {% for item in dashboard.org_summary.circle[:8] %}
+            <li>{{ item.name }}: {{ item.count }}</li>
+            {% else %}
+            <li>No circle data</li>
+            {% endfor %}
+        </ol>
+    </div>
+    <div class="panel">
+        <h2>Top Divisions</h2>
+        <ol>
+            {% for item in dashboard.org_summary.division[:8] %}
+            <li>{{ item.name }}: {{ item.count }}</li>
+            {% else %}
+            <li>No division data</li>
+            {% endfor %}
+        </ol>
+    </div>
+</div>
+
+<div class="grid two" style="margin-bottom: 18px;">
+    <details class="panel">
+        <summary>Search / Browse</summary>
+        <div class="details-body">
+            <div class="grid two">
+                <div>
+                    <h2>Open Search Pages</h2>
+                    <form method="get" action="/search/cpf">
+                        <input name="cpfno" placeholder="Enter CPF number">
+                        <button type="submit">Open CPF Result Page</button>
+                    </form>
+                    <form method="get" action="/search/name" style="margin-top: 10px;">
+                        <input name="employee_name" placeholder="Enter full or partial name">
+                        <button type="submit">Open Name Result Page</button>
+                    </form>
+                </div>
+                <div>
+                    <h2>Browse Cases by Office Unit</h2>
+                    <form method="get" action="/browse/org">
+                        <div class="row">
+                            <select name="kind">
+                                <option value="circle">Circle</option>
+                                <option value="division">Division</option>
+                                <option value="zone">Zone</option>
+                            </select>
+                            <input name="value" placeholder="Type exact circle/division/zone name">
+                        </div>
+                        <button type="submit">Open Org-wise Case Page</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </details>
+</div>
+
+<div class="grid two" style="margin-bottom: 18px;">
+    <details class="panel">
+        <summary>Sheet Structure</summary>
+        <div class="details-body">
+            <form method="get" action="/sheet/{{ sheet_choices[0] if sheet_choices else '' }}" onsubmit="event.preventDefault(); if(this.sheet_name.value){ window.location='/sheet/' + this.sheet_name.value; }">
+                <select name="sheet_name">
+                    <option value="">Select sheet</option>
+                    {% for sheet in sheet_choices %}
+                    <option value="{{ sheet }}">{{ sheet }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit">Open Sheet View</button>
+            </form>
+        </div>
+    </details>
+    <details class="panel">
+        <summary>Actions</summary>
+        <div class="details-body">
+            <form method="post" action="/extract">
+                <button type="submit">Extract DC Numbers Across All Sheets</button>
+            </form>
+            <div class="inline-actions" style="margin-top: 10px;">
+                <form method="post" action="/export/csv" style="flex:1;">
+                    <button class="secondary" type="submit">Export Pendency CSV</button>
+                </form>
+                <form method="post" action="/export/json" style="flex:1;">
+                    <button class="secondary" type="submit">Export Pendency JSON</button>
+                </form>
+            </div>
+        </div>
+    </details>
+</div>
+
+<div class="grid three" style="margin-bottom: 18px;">
+    <details class="panel">
+        <summary>Add Record</summary>
+        <div class="details-body">
+            <form method="post" action="/record/add">
+                <select name="sheet_name">
+                    <option value="">Select sheet</option>
+                    {% for sheet in sheet_choices %}
+                    <option value="{{ sheet }}">{{ sheet }}</option>
+                    {% endfor %}
+                </select>
+                <textarea name="add_values" placeholder="Example:&#10;2=Rahul Sharma&#10;4=2200123&#10;10=SE/PRC/2024/1060&#10;12=Pending"></textarea>
+                <button type="submit">Add Record</button>
+            </form>
+        </div>
+    </details>
+    <details class="panel">
+        <summary>Archive Closed Case</summary>
+        <div class="details-body">
+            <form method="post" action="/record/close">
+                <div class="row">
+                    <input name="close_cpfno" placeholder="CPF number">
+                    <input name="close_sheet" placeholder="Sheet name">
+                </div>
+                <div class="row">
+                    <input name="close_dc_no" placeholder="DC number">
+                    <input name="close_outcome" placeholder="Outcome">
+                </div>
+                <div class="row">
+                    <input name="close_by" placeholder="Closed by">
+                    <input name="close_date" placeholder="YYYY-MM-DD">
+                </div>
+                <button type="submit">Archive Case</button>
+            </form>
+        </div>
+    </details>
+    <details class="panel">
+        <summary>Quick Org Values</summary>
+        <div class="details-body">
+            <div class="muted"><b>Top Circles:</b> {{ circle_values[:8]|join(", ") }}</div>
+            <div class="muted" style="margin-top: 8px;"><b>Top Divisions:</b> {{ division_values[:8]|join(", ") }}</div>
+            <div class="muted" style="margin-top: 8px;"><b>Zones:</b> {{ zone_values[:8]|join(", ") }}</div>
+        </div>
+    </details>
+</div>
+
+<div class="grid two">
+    <div class="panel">
+        <h2>Sheet-wise Case Count</h2>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Sheet</th><th>Description</th><th>Count</th></tr></thead>
+                <tbody>
+                    {% for row in dashboard.sheet_rows %}
+                    <tr>
+                        <td><a href="/sheet/{{ row.sheet }}">{{ row.sheet }}</a></td>
+                        <td>{{ row.title }}</td>
+                        <td><span class="badge b-{{ row.badge_class }}">{{ row.count }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="panel">
+        <h2>Recent Backups / Closed Cases</h2>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Type</th><th>Details</th><th>Time</th></tr></thead>
+                <tbody>
+                    {% for item in backups %}
+                    <tr><td>Backup</td><td>{{ item.filename }} | {{ item.reason }}</td><td>{{ item.time[:19] }}</td></tr>
+                    {% endfor %}
+                    {% for item in closed_cases %}
+                    <tr><td>Closed</td><td>{{ item.cpfno }} | {{ item.sheet }} | {{ item.outcome }}</td><td>{{ item.closed_date }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
