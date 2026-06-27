@@ -413,8 +413,9 @@ def create_app(loader):
     else:
         app = Flask(__name__)
     app.config["SECRET_KEY"] = "dc-manager-offline-secure-key"
-    # Configure session to work across different hosts
-    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    # Configure session to work across different hosts (required for iframe PWA)
+    app.config["SESSION_COOKIE_SAMESITE"] = "None"
+    app.config["SESSION_COOKIE_SECURE"] = True
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     
     ADMIN_CPF = "2266083"
