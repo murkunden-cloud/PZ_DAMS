@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1e3a5f">
+    <title>DAMS - Pune Zone</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html, body {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            background: #1e3a5f;
+        }
+        
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #app-frame {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #f0f4f8;
+        }
+        
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1e3a5f, #2d5a88);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.5s ease;
+        }
+        
+        #loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            color: #fff;
+            margin-top: 20px;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        
+        .logo {
+            font-size: 32px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">
+        <div class="logo">📋</div>
+        <div class="spinner"></div>
+        <div class="loading-text">Loading DAMS...</div>
+    </div>
+    
+    <!-- REPLACE THE URL BELOW WITH YOUR DEPLOYED FLASK APP URL -->
+    <iframe 
+        id="app-frame" 
+        src="https://YOUR_DEPLOYED_URL_HERE" 
+        allow="clipboard-read; clipboard-write"
+        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
+        onload="hideLoading()">
+    </iframe>
+    
+    <script>
+        function hideLoading() {
+            setTimeout(() => {
+                document.getElementById('loading').classList.add('hidden');
+            }, 500);
+        }
+        
+        // Handle back button in standalone mode
+        window.addEventListener('popstate', function(e) {
+            const iframe = document.getElementById('app-frame');
+            if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage('back', '*');
+            }
+        });
+        
+        // Prevent zoom on iOS
+        document.addEventListener('gesturestart', function(e) {
+            e.preventDefault();
+        });
+    </script>
+</body>
+</html>

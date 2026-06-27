@@ -1,0 +1,29 @@
+{
+  "name": "DAMS - Pune Zone",
+  "short_name": "DAMS",
+  "description": "Disciplinary Action Management System for Pune Zone MSEDCL",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1e3a5f",
+  "theme_color": "#1e3a5f",
+  "orientation": "portrait-primary",
+  "scope": "./",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View DC Dashboard",
+      "url": "./index.html",
+      "icons": [{"src": "icon.png", "sizes": "512x512"}]
+    }
+  ]
+}
