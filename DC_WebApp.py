@@ -547,6 +547,14 @@ def create_app(loader):
                 
         return render_template("login.html", error="Invalid CPF or Password")
 
+@app.post("/admin/clear_guests")
+    @admin_required
+    def clear_guest_sessions():
+        count = len(ACTIVE_GUEST_SESSIONS)
+        ACTIVE_GUEST_SESSIONS.clear()
+        # Optionally pass a message, but we just redirect
+        return redirect(request.referrer or "/home")
+
     @app.get("/logout")
     @login_required
     def logout():

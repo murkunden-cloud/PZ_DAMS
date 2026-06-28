@@ -352,12 +352,22 @@
                 {% if is_admin %}
                 <li><a href="/import" id="nav-import" style="color: #3498db; font-weight: bold;">📥 Import Monthly Cases</a></li>
                 {% endif %}
+                {% if is_admin %}
+                <li>
+                    <a href="#" onclick="if(confirm('Force logout all active guest sessions? This will immediately free up capacity.')){ document.getElementById('clear-guests-form').submit(); } return false;" style="color: #e74c3c; font-weight: bold;">
+                        🧹 Clear Active Guests
+                    </a>
+                </li>
+                {% endif %}
                 <li><a href="/users" id="nav-users">👥 Manage Users</a></li>
                 <li><a href="/export" style="color: #2ecc71; font-weight: bold;">📥 Export Excel File</a></li>
                 <li style="margin-top: 20px; border-top: 1px solid #34495e; padding-top: 10px;">
                     <a href="#" onclick="if(confirm('Are you sure you want to shutdown and exit the DAMS program?')){ document.getElementById('exit-form').submit(); }" style="color: #ff7675; border-left-color: #d63031;">❌ Exit Program</a>
                 </li>
             </ul>
+            
+            <!-- Hidden Clear Guests Form -->
+            <form id="clear-guests-form" action="/admin/clear_guests" method="post" style="display: none;"></form>
             
             <!-- Hidden Exit Form -->
             <form id="exit-form" action="/exit" method="post" style="display: none;"></form>
