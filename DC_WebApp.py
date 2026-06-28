@@ -3,6 +3,14 @@ import json
 import webbrowser
 from datetime import datetime
 import tempfile
+import time
+import uuid
+
+# --- TRAFFIC AND SUBSCRIPTION CONTROL ---
+MAX_ACTIVE_GUESTS = 5
+GUEST_SESSION_TIMEOUT_MINUTES = 10
+ACTIVE_GUEST_SESSIONS = {}  # Format: { session_id: last_active_timestamp }
+
 
 try:
     from flask import Flask, redirect, render_template, request, send_file, url_for, session
@@ -429,14 +437,7 @@ def create_app(loader):
     app.config["SESSION_COOKIE_SECURE"] = True
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     
-    # --- TRAFFIC AND SUBSCRIPTION CONTROL ---
-    MAX_ACTIVE_GUESTS = 5
-    GUEST_SESSION_TIMEOUT_MINUTES = 10
-    ACTIVE_GUEST_SESSIONS = {}  # Format: { session_id: last_active_timestamp }
 
-    import time
-    import uuid
-    from datetime import datetime
 
     @app.before_request
     def track_guest_sessions():
