@@ -547,7 +547,7 @@ def create_app(loader):
                 
         return render_template("login.html", error="Invalid CPF or Password")
 
-@app.post("/admin/clear_guests")
+    @app.post("/admin/clear_guests")
     @admin_required
     def clear_guest_sessions():
         count = len(ACTIVE_GUEST_SESSIONS)
