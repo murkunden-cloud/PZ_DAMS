@@ -86,7 +86,7 @@
                     <td><small>{{ item.remarks or 'N/A' }}</small></td>
                     <td>
                         <div style="display: flex; gap: 5px;">
-                            <a class="btn btn-secondary btn-sm" href="/record/{{ item.sheet }}/{{ item.row_number }}">✏️ Edit</a>
+                            <a class="btn btn-secondary btn-sm" href="/record/{{ item.sheet }}/{{ item.row_number }}">{% if is_admin %}✏️ Edit{% else %}👁️ View{% endif %}</a>
                             {% if item.sheet in ["6DC", "22DC", "23DC"] %}
                             <a class="btn btn-danger btn-sm" href="/case/close/{{ item.sheet }}/{{ item.row_number }}" style="background-color: #e74c3c; border-color: #e74c3c; color: white;">🔒 Close</a>
                             {% endif %}

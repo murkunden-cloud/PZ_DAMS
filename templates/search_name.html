@@ -37,7 +37,7 @@
                         <td>{{ item.last_updated or 'N/A' }}</td>
                         <td>{{ item.remarks or 'N/A' }}</td>
                         <td>
-                            <a class="button-link" href="/record/{{ item.sheet }}/{{ item.row_number }}">Open / Edit</a>
+                            <a class="button-link" href="/record/{{ item.sheet }}/{{ item.row_number }}">{% if is_admin %}Open / Edit{% else %}Open / View{% endif %}</a>
                             {% if item.sheet in ["6DC", "22DC", "23DC"] %}
                             | <a class="button-link" href="/case/close/{{ item.sheet }}/{{ item.row_number }}" style="color: #e74c3c; font-weight: bold;">Close Case</a>
                             {% endif %}

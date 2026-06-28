@@ -65,10 +65,19 @@ def load_users():
         with open(USERS_FILE, "r", encoding="utf-8") as f:
             users = json.load(f)
         if not users:
-            return default_users
-        return users
+            users = default_users
     except Exception:
-        return default_users
+        users = default_users
+        
+    # Always inject guest user for public demo access
+    if "guest" not in users:
+        users["guest"] = {
+            "password": "guest1",
+            "name": "Guest Viewer",
+            "role": "user",
+            "jurisdiction": "All"
+        }
+    return users
 
 def save_users(users):
     try:

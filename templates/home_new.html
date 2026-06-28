@@ -28,7 +28,7 @@
                 <td data-label="Case Reference"><span style="font-size: 11px;">{{ item.dc_ref }}</span></td>
                 <td data-label="Actions">
                     <div style="display:flex; gap: 5px;">
-                        <a href="/record/{{ sheet_name }}/{{ item.row_number }}" class="btn btn-secondary btn-sm">✏️ Edit</a>
+                        <a href="/record/{{ sheet_name }}/{{ item.row_number }}" class="btn btn-secondary btn-sm">{% if is_admin %}✏️ Edit{% else %}👁️ View{% endif %}</a>
                         {% if show_close %}
                         <a href="/case/close/{{ sheet_name }}/{{ item.row_number }}" class="btn btn-warning btn-sm">❌ Close</a>
                         {% endif %}
@@ -69,7 +69,7 @@
                         <form action="/case/consolidate/{{ sheet_name }}/{{ item.row_number }}" method="post" onsubmit="return confirm('Send this initiated case to the ongoing sheets?')" style="margin:0;">
                             <button type="submit" class="btn btn-success btn-sm">⚡ Consolidate</button>
                         </form>
-                        <a href="/record/{{ sheet_name }}/{{ item.row_number }}" class="btn btn-secondary btn-sm">✏️ Edit</a>
+                        <a href="/record/{{ sheet_name }}/{{ item.row_number }}" class="btn btn-secondary btn-sm">{% if is_admin %}✏️ Edit{% else %}👁️ View{% endif %}</a>
                     </div>
                 </td>
             </tr>

@@ -108,7 +108,7 @@
                 <tr>
                     <td style="background: #f8fafc; border: 1px solid #cbd5e1; text-align: center; position: sticky; left: 0; z-index: 1;"><strong>{{ item.row_number }}</strong></td>
                     <td style="background: #f8fafc; border: 1px solid #cbd5e1; text-align: center; position: sticky; left: 45px; z-index: 1;">
-                        <a class="btn btn-sm btn-primary" href="/record/{{ sheet_info.sheet }}/{{ item.row_number }}" style="padding: 2px 8px; font-size: 11px;">✏️ Edit</a>
+                        <a class="btn btn-sm btn-primary" href="/record/{{ sheet_info.sheet }}/{{ item.row_number }}" style="padding: 2px 8px; font-size: 11px;">{% if is_admin %}✏️ Edit{% else %}👁️ View{% endif %}</a>
                     </td>
                     {% for val in item['values'] %}
                     <td style="border: 1px solid #e2e8f0; padding: 6px 12px; max-width: 350px; overflow: hidden; text-overflow: ellipsis;" title="{{ val }}">{{ val }}</td>

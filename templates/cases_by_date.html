@@ -38,7 +38,7 @@
                     <td><small>{{ item.place }}</small></td>
                     <td><span style="font-size: 11px;">{{ item.dc_ref }}</span></td>
                     <td>
-                        <a href="/record/{{ item.sheet }}/{{ item.row_number }}" class="btn btn-secondary btn-sm">✏️ Edit</a>
+                        <a href="/record/{{ item.sheet }}/{{ item.row_number }}" class="btn btn-secondary btn-sm">{% if is_admin %}✏️ Edit{% else %}👁️ View{% endif %}</a>
                     </td>
                 </tr>
                 {% else %}

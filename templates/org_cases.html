@@ -43,7 +43,7 @@
                     <td>{{ item.dc_record_date }}</td>
                     <td>{{ item.facts_of_case }}</td>
                     <td>{{ item.preview|join(" | ") }}</td>
-                    <td><a class="button-link" href="/record/{{ item.sheet }}/{{ item.row_number }}">Open / Edit</a></td>
+                    <td><a class="button-link" href="/record/{{ item.sheet }}/{{ item.row_number }}">{% if is_admin %}Open / Edit{% else %}Open / View{% endif %}</a></td>
                 </tr>
                 {% else %}
                 <tr><td colspan="10">No org-wise rows loaded yet.</td></tr>
