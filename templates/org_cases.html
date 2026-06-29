@@ -7,22 +7,35 @@
         <h2 style="margin: 0;">Browse by Zone / Circle / Division</h2>
         <a href="/home" class="btn btn-secondary btn-sm" style="text-decoration: none;">⬅️ Back to Dashboard</a>
     </div>
-    <form method="get" action="/browse/org">
-        <div class="row">
-            <select name="kind">
-                <option value="zone" {% if org_kind == "zone" %}selected{% endif %}>Zone</option>
-                <option value="circle" {% if org_kind == "circle" %}selected{% endif %}>Circle</option>
-                <option value="division" {% if org_kind == "division" %}selected{% endif %}>Division</option>
-            </select>
-            {% set options = zone_values if org_kind == 'zone' else circle_values if org_kind == 'circle' else division_values %}
-            <select name="value">
-                <option value="">Select {{ org_kind|capitalize }}</option>
-                {% for option in options %}
-                <option value="{{ option }}" {% if option == org_value %}selected{% endif %}>{{ option }}</option>
-                {% endfor %}
-            </select>
+    <form method="get" action="/browse/org" id="org-browse-form">
+        <input type="hidden" name="kind" id="org-kind-input" value="{{ org_kind|default('zone') }}">
+        <input type="hidden" name="value" id="org-value-input" value="{{ org_value|default('') }}">
+        <div class="row" style="display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 200px;">
+                <label style="display:block; font-size: 12px; font-weight: bold; margin-bottom: 5px;">Select Zone</label>
+                <select id="select-zone" onchange="orgUpdateZone()" style="width: 100%; padding: 8px; border: 1px solid #cbd5e0; border-radius: 4px;">
+                    <option value="">-- Select Zone --</option>
+                </select>
+            </div>
+            <div style="flex: 1; min-width: 200px;">
+                <label style="display:block; font-size: 12px; font-weight: bold; margin-bottom: 5px;">Select Circle</label>
+                <select id="select-circle" onchange="orgUpdateCircle()" style="width: 100%; padding: 8px; border: 1px solid #cbd5e0; border-radius: 4px;">
+                    <option value="">-- Select Circle --</option>
+                </select>
+            </div>
+            <div style="flex: 1; min-width: 200px;">
+                <label style="display:block; font-size: 12px; font-weight: bold; margin-bottom: 5px;">Select Division</label>
+                <select id="select-division" onchange="orgUpdateDivision()" style="width: 100%; padding: 8px; border: 1px solid #cbd5e0; border-radius: 4px;">
+                    <option value="">-- Select Division --</option>
+                </select>
+            </div>
+            <div style="flex: 1; min-width: 200px;">
+                <label style="display:block; font-size: 12px; font-weight: bold; margin-bottom: 5px;">Search Location (Office)</label>
+                <input type="text" id="select-location" list="location-list" style="width: 100%; padding: 8px; border: 1px solid #cbd5e0; border-radius: 4px;" placeholder="Type to search location...">
+                <datalist id="location-list"></datalist>
+            </div>
         </div>
-        <button type="submit">Load Cases</button>
+        <button type="button" class="btn btn-primary" onclick="submitOrgBrowse()">Load Cases</button>
     </form>
 </div>
 
@@ -52,4 +65,177 @@
         </table>
     </div>
 </div>
+
+<script>
+    let orgHierarchy = {};
+    let circleToZone = {};
+    const initKind = document.getElementById('org-kind-input').value;
+    const initValue = document.getElementById('org-value-input').value;
+
+    document.addEventListener("DOMContentLoaded", function() {
+        fetch('/api/org-hierarchy')
+            .then(res => res.json())
+            .then(data => {
+                if(data.success && data.hierarchy) {
+                    orgHierarchy = data.hierarchy;
+                    for(const zone in orgHierarchy) {
+                        for(const circle in orgHierarchy[zone]) {
+                            circleToZone[circle] = zone;
+                        }
+                    }
+                    
+                    const zoneSelect = document.getElementById('select-zone');
+                    Object.keys(orgHierarchy).sort().forEach(zone => {
+                        const opt = document.createElement('option');
+                        opt.value = zone;
+                        opt.innerText = zone;
+                        zoneSelect.appendChild(opt);
+                    });
+                    
+                    // Pre-fill logic based on URL params
+                    if (initValue) {
+                        if (initKind === 'zone') {
+                            zoneSelect.value = initValue;
+                            orgUpdateZone();
+                        } else if (initKind === 'circle') {
+                            const parentZone = circleToZone[initValue];
+                            if (parentZone) {
+                                zoneSelect.value = parentZone;
+                                orgUpdateZone();
+                                document.getElementById('select-circle').value = initValue;
+                                orgUpdateCircle();
+                            }
+                        } else if (initKind === 'division') {
+                            let foundCircle = null, foundZone = null;
+                            for(const z in orgHierarchy) {
+                                for(const c in orgHierarchy[z]) {
+                                    if(initValue in orgHierarchy[z][c]) {
+                                        foundZone = z;
+                                        foundCircle = c;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (foundZone && foundCircle) {
+                                zoneSelect.value = foundZone;
+                                orgUpdateZone();
+                                document.getElementById('select-circle').value = foundCircle;
+                                orgUpdateCircle();
+                                document.getElementById('select-division').value = initValue;
+                                orgUpdateDivision();
+                            }
+                        } else if (initKind === 'office') {
+                            let foundDiv = null, foundCircle = null, foundZone = null;
+                            for(const z in orgHierarchy) {
+                                for(const c in orgHierarchy[z]) {
+                                    for(const d in orgHierarchy[z][c]) {
+                                        if (orgHierarchy[z][c][d].includes(initValue)) {
+                                            foundZone = z;
+                                            foundCircle = c;
+                                            foundDiv = d;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            if (foundZone && foundCircle && foundDiv) {
+                                zoneSelect.value = foundZone;
+                                orgUpdateZone();
+                                document.getElementById('select-circle').value = foundCircle;
+                                orgUpdateCircle();
+                                document.getElementById('select-division').value = foundDiv;
+                                orgUpdateDivision();
+                                document.getElementById('select-location').value = initValue;
+                            } else {
+                                document.getElementById('select-location').value = initValue;
+                            }
+                        }
+                    }
+                }
+            });
+    });
+
+    function orgUpdateZone() {
+        const zone = document.getElementById('select-zone').value;
+        const circleSel = document.getElementById('select-circle');
+        const divSel = document.getElementById('select-division');
+        const locList = document.getElementById('location-list');
+        circleSel.innerHTML = '<option value="">-- Select Circle --</option>';
+        divSel.innerHTML = '<option value="">-- Select Division --</option>';
+        locList.innerHTML = '';
+        document.getElementById('select-location').value = '';
+        if (zone && orgHierarchy[zone]) {
+            Object.keys(orgHierarchy[zone]).sort().forEach(circle => {
+                const opt = document.createElement('option');
+                opt.value = circle;
+                opt.innerText = circle;
+                circleSel.appendChild(opt);
+            });
+        }
+    }
+
+    function orgUpdateCircle() {
+        const zone = document.getElementById('select-zone').value;
+        const circle = document.getElementById('select-circle').value;
+        const divSel = document.getElementById('select-division');
+        const locList = document.getElementById('location-list');
+        divSel.innerHTML = '<option value="">-- Select Division --</option>';
+        locList.innerHTML = '';
+        document.getElementById('select-location').value = '';
+        let activeZone = zone || circleToZone[circle];
+        if (activeZone && circle && orgHierarchy[activeZone][circle]) {
+            Object.keys(orgHierarchy[activeZone][circle]).sort().forEach(div => {
+                const opt = document.createElement('option');
+                opt.value = div;
+                opt.innerText = div;
+                divSel.appendChild(opt);
+            });
+        }
+    }
+
+    function orgUpdateDivision() {
+        const zone = document.getElementById('select-zone').value;
+        const circle = document.getElementById('select-circle').value;
+        const div = document.getElementById('select-division').value;
+        const locList = document.getElementById('location-list');
+        locList.innerHTML = '';
+        document.getElementById('select-location').value = '';
+        let activeZone = zone || circleToZone[circle];
+        if (activeZone && circle && div && orgHierarchy[activeZone][circle] && orgHierarchy[activeZone][circle][div]) {
+            orgHierarchy[activeZone][circle][div].sort().forEach(loc => {
+                const opt = document.createElement('option');
+                opt.value = loc;
+                locList.appendChild(opt);
+            });
+        }
+    }
+
+    function submitOrgBrowse() {
+        const zone = document.getElementById('select-zone').value;
+        const circle = document.getElementById('select-circle').value;
+        const div = document.getElementById('select-division').value;
+        const loc = document.getElementById('select-location').value;
+        
+        const kindInput = document.getElementById('org-kind-input');
+        const valInput = document.getElementById('org-value-input');
+        
+        if (loc) {
+            kindInput.value = "office";
+            valInput.value = loc;
+        } else if (div) {
+            kindInput.value = "division";
+            valInput.value = div;
+        } else if (circle) {
+            kindInput.value = "circle";
+            valInput.value = circle;
+        } else if (zone) {
+            kindInput.value = "zone";
+            valInput.value = zone;
+        } else {
+            alert("Please select at least a Zone to browse.");
+            return;
+        }
+        document.getElementById('org-browse-form').submit();
+    }
+</script>
 {% endblock %}

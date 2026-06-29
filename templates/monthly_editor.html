@@ -55,8 +55,6 @@
                     {% endfor %}
                 </select>
             </div>
-            <div>
-                <button class="btn btn-primary" id="btn-add-record" style="display: none;" onclick="openAddModal()">➕ Add New Record</button>
             </div>
         </div>
 
@@ -140,7 +138,6 @@
         document.getElementById('container-35dc').style.display = (tabId === '35dc') ? 'block' : 'none';
         
         document.getElementById('data-table').style.display = 'none';
-        document.getElementById('btn-add-record').style.display = 'none';
         document.getElementById('sheet-selector-' + tabId).value = "";
     }
 
@@ -149,7 +146,6 @@
             const sheet = this.value;
             if(!sheet) {
                 document.getElementById('data-table').style.display = 'none';
-                document.getElementById('btn-add-record').style.display = 'none';
                 return;
             }
             loadSheet(sheet);
@@ -160,7 +156,6 @@
         currentSheet = sheet;
         document.getElementById('loading-indicator').style.display = 'block';
         document.getElementById('data-table').style.display = 'none';
-        document.getElementById('btn-add-record').style.display = 'none';
         
         fetch(`/api/monthly-sheet-data?sheet=${encodeURIComponent(sheet)}`)
             .then(r => r.json())
@@ -177,7 +172,6 @@
                 document.getElementById('data-table').style.display = 'table';
                 
                 const is35DC = document.getElementById('tab-35dc').classList.contains('btn-primary');
-                document.getElementById('btn-add-record').style.display = is35DC ? 'none' : 'inline-flex';
 
                 if(!prefixesLoaded) {
                     loadPrefixes();

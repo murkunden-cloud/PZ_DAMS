@@ -29,6 +29,7 @@ ORG_COLUMNS = {
     "zone": "PresentZone",
     "circle": "PresentCircle",
     "division": "presentDivision",
+    "office": "PresentOffice",
 }
 
 USERS_FILE = os.path.join(RUNTIME_DIR, "users.json")
@@ -430,11 +431,9 @@ def create_app(loader):
     else:
         app = Flask(__name__)
     app.config["SECRET_KEY"] = "dc-manager-offline-secure-key"
-    # Configure session to work across different hosts (required for iframe PWA)
-    app.config["SESSION_COOKIE_SAMESITE"] = "None"
-    app.config["SESSION_COOKIE_SECURE"] = True
-
-    app.config["SESSION_COOKIE_SECURE"] = True
+    # Configure session to work on both HTTP and HTTPS
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    app.config["SESSION_COOKIE_SECURE"] = False
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     
 
@@ -597,6 +596,28 @@ def create_app(loader):
                 }
             }
         return {"success": False, "error": "Employee not found in master list"}
+
+    @app.get("/api/org-hierarchy")
+    @login_required
+    def get_org_hierarchy():
+        emp_df = loader.load_emp()
+        hierarchy = {}
+        if not emp_df.empty:
+            for _, row in emp_df.iterrows():
+                z = str(row.get("PresentZone", "")).strip() or "Unknown Zone"
+                c = str(row.get("PresentCircle", "")).strip() or "Unknown Circle"
+                d = str(row.get("presentDivision", "")).strip() or "Unknown Division"
+                o = str(row.get("PresentOffice", "")).strip() or "Unknown Location"
+                
+                if z not in hierarchy:
+                    hierarchy[z] = {}
+                if c not in hierarchy[z]:
+                    hierarchy[z][c] = {}
+                if d not in hierarchy[z][c]:
+                    hierarchy[z][c][d] = []
+                if o not in hierarchy[z][c][d] and o != "Unknown Location":
+                    hierarchy[z][c][d].append(o)
+        return {"success": True, "hierarchy": hierarchy}
 
     @app.get("/case/initiate")
     @admin_required
@@ -814,6 +835,12 @@ def create_app(loader):
                            status=status,
                            counts=counts,
                            dashboard=dashboard_data)
+
+    @app.get("/refresh-data")
+    @login_required
+    def refresh_data():
+        loader.clear_cache()
+        return redirect(url_for('home', message="Master data cache cleared and refreshed successfully from Excel files.", status="success"))
 
     @app.get("/search/cpf")
     def search_cpf():
@@ -1351,7 +1378,7 @@ def create_app(loader):
             return redirect(url_for("manage_users", message="User with this CPF already exists.", status="error"))
             
         users[cpf] = {
-            "password": generate_password_hash(password),
+            "password": password,
             "name": name,
             "role": role or "client"
         }
@@ -1374,9 +1401,9 @@ def create_app(loader):
         if cpf not in users:
             return redirect(url_for("manage_users", message="User not found.", status="error"))
             
-        users[cpf]["password"] = generate_password_hash(new_password)
+        users[cpf]["password"] = new_password
         save_users(users)
-        return redirect(url_for("manage_users", message="Password updated successfully.", status="success"))
+        return redirect(url_for("manage_users", message=f"Password updated successfully for user {cpf}.", status="success"))
 
     @app.post("/users/delete/<cpf>")
     @admin_required

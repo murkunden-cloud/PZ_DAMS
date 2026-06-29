@@ -67,11 +67,17 @@
                         <td style="padding: 12px 10px; text-align: right;">
                             <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
                                 <!-- Password Update Mini-form -->
-                                <form method="post" action="/users/update-password" style="margin: 0; display: flex; gap: 5px;">
-                                    <input type="hidden" name="cpf" value="{{ cpf }}">
-                                    <input type="password" name="password" placeholder="New Pass" style="width: 90px; padding: 4px 8px; font-size: 11px;" required>
-                                    <button type="submit" class="btn btn-warning btn-sm">💾 Key</button>
-                                </form>
+                                <div style="display: flex; flex-direction: column; gap: 5px; align-items: flex-end; margin-bottom: 5px;">
+                                    <div style="display: flex; gap: 5px; align-items: center;">
+                                        <span id="pw-{{ cpf }}" style="display: none; font-size: 11px; background: #eee; padding: 3px 6px; border-radius: 3px;">{{ user.password }}</span>
+                                        <button type="button" class="btn btn-secondary btn-sm" onclick="togglePassword('pw-{{ cpf }}')">👁️ View Password</button>
+                                    </div>
+                                    <form method="post" action="/users/update-password" style="margin: 0; display: flex; gap: 5px;">
+                                        <input type="hidden" name="cpf" value="{{ cpf }}">
+                                        <input type="text" name="password" placeholder="New Pass" style="width: 90px; padding: 4px 8px; font-size: 11px;" required>
+                                        <button type="submit" class="btn btn-warning btn-sm">💾 Update</button>
+                                    </form>
+                                </div>
                                 
                                 <!-- Delete Action (Disable for administrator) -->
                                 {% if cpf != '2266083' %}
@@ -96,5 +102,14 @@
     // Highlight active sidebar navigation
     document.querySelectorAll('.sidebar-menu a').forEach(el => el.classList.remove('active'));
     document.getElementById('nav-users').classList.add('active');
+
+    function togglePassword(id) {
+        var el = document.getElementById(id);
+        if (el.style.display === "none") {
+            el.style.display = "inline-block";
+        } else {
+            el.style.display = "none";
+        }
+    }
 </script>
 {% endblock %}

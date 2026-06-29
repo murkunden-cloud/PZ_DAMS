@@ -72,8 +72,8 @@ META = {
     "17DC": {"type": "suspension_revoke", "scope": "circlewise", "title": "Suspension Revoked - Circlewise", "cpf_col": 3, "dc_col": 7, "facts_col": 6, "data_start": 5},
     "20DC": {"type": "major", "scope": "statewise", "title": "Major DC Chargesheet - Statewise", "cpf_col": 4, "dc_col": 10, "facts_col": 9, "data_start": 6},
     "21DC": {"type": "major", "scope": "circlewise", "title": "Major DC Chargesheet - Circlewise", "cpf_col": 4, "dc_col": 10, "facts_col": 9, "data_start": 5},
-    "22DC": {"type": "major_all", "scope": "statewise", "title": "Major DC All Cases - Statewise", "cpf_col": 4, "dc_col": 10, "dc_record_no_col": 11, "dc_record_date_col": 12, "facts_col": 9, "data_start": 5},
-    "23DC": {"type": "major_all", "scope": "circlewise", "title": "Major DC All Cases - Circlewise", "cpf_col": 4, "dc_col": 10, "dc_record_no_col": 11, "dc_record_date_col": 12, "facts_col": 9, "data_start": 5},
+    "22DC": {"type": "major_all", "scope": "statewise", "title": "Major DC All Cases - Statewise", "cpf_col": 4, "dc_col": 10, "dc_record_no_col": 21, "dc_record_date_col": 22, "facts_col": 11, "data_start": 5},
+    "23DC": {"type": "major_all", "scope": "circlewise", "title": "Major DC All Cases - Circlewise", "cpf_col": 4, "dc_col": 10, "dc_record_no_col": 21, "dc_record_date_col": 22, "facts_col": 11, "data_start": 5},
     "24DC": {"type": "major_finalised", "scope": "statewise", "title": "Major DC Finalised - Statewise", "cpf_col": 4, "dc_col": 10, "facts_col": 9, "data_start": 4},
     "25DC": {"type": "major_finalised", "scope": "circlewise", "title": "Major DC Finalised - Circlewise", "cpf_col": 3, "dc_col": 9, "facts_col": 8, "data_start": 6},
     "29DC": {"type": "appeal", "scope": "statewise", "title": "Appeal Disposed - Statewise", "cpf_col": 3, "dc_col": 7, "facts_col": 6, "data_start": 4},
@@ -355,10 +355,25 @@ class DCDataLoader:
             return None
         meta = self.meta[sheet_name]
         actual_sheet = meta.get("actual_name", sheet_name)
+        
+        import tempfile
+        import shutil
+        temp_path = None
         try:
-            frame = pd.read_excel(target_file, sheet_name=actual_sheet, header=None, dtype=str)
+            # Copy to temp file to bypass Windows file locks (PermissionError if opened in Excel)
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsm") as tmp:
+                temp_path = tmp.name
+            shutil.copy2(target_file, temp_path)
+            frame = pd.read_excel(temp_path, sheet_name=actual_sheet, header=None, dtype=str)
         except Exception:
             return None
+        finally:
+            if temp_path and os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except OSError:
+                    pass
+                    
         frame = frame.fillna("")
         
         # Apply Jurisdiction Filtering
