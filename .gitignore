@@ -47,6 +47,7 @@ reports/
 *.xlsx
 *.xls
 config.ini
+login_credentials.txt
 
 # Build artifacts
 *.spec
