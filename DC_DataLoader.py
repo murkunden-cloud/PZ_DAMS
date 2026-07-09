@@ -11,6 +11,13 @@ except ImportError as exc:
 import sys
 import configparser
 
+# Try to import database manager, but don't fail if not available
+try:
+    from DC_DatabaseManager import db_manager
+    DATABASE_AVAILABLE = True
+except ImportError:
+    DATABASE_AVAILABLE = False
+
 # Determine the actual application directory (handles PyInstaller)
 if getattr(sys, 'frozen', False):
     APP_DIR = os.path.dirname(sys.executable)
@@ -325,8 +332,90 @@ class DCDataLoader:
             return val.get('paygrp', '')
         return ""
 
+    def load_cases_from_database(self, sheet_name):
+        """Load cases from database instead of Excel"""
+        if not DATABASE_AVAILABLE:
+            return None
+        try:
+            cases = db_manager.get_cases_by_sheet(sheet_name)
+            if cases:
+                df = pd.DataFrame(cases)
+                # Transform database columns to Excel-like format
+                # Map database columns to Excel column positions based on META
+                meta = self.meta.get(sheet_name, {})
+                excel_frame = self._transform_db_to_excel_format(df, sheet_name, meta)
+                return excel_frame
+        except Exception as e:
+            print(f"Error loading from database: {e}")
+        return None
+    
+    def _transform_db_to_excel_format(self, db_df, sheet_name, meta):
+        """Transform database DataFrame to Excel-like format with numeric columns"""
+        # Create a DataFrame with numeric column indices like Excel
+        # We'll create columns that match the Excel structure
+        num_cols = max(meta.get("cpf_col", 4), meta.get("dc_col", 10), meta.get("facts_col", 9)) + 5
+        excel_data = []
+        
+        for _, row in db_df.iterrows():
+            # Create row with empty strings for all columns
+            excel_row = [""] * num_cols
+            
+            # Map database fields to Excel column positions based on META
+            # Column 0: Employee name
+            excel_row[0] = safe_text(row.get('employee_name', ''))
+            
+            # CPF column (1-indexed in META, 0-indexed in DataFrame)
+            cpf_col = meta.get("cpf_col", 4) - 1
+            if cpf_col >= 0 and cpf_col < num_cols:
+                excel_row[cpf_col] = safe_text(row.get('cpf_no', ''))
+            
+            # DC number column
+            dc_col = meta.get("dc_col", 10) - 1
+            if dc_col >= 0 and dc_col < num_cols:
+                excel_row[dc_col] = safe_text(row.get('dc_number', ''))
+            
+            # Facts column
+            facts_col = meta.get("facts_col", 9) - 1
+            if facts_col >= 0 and facts_col < num_cols:
+                excel_row[facts_col] = safe_text(row.get('facts_of_case', ''))
+            
+            # Designation (usually column 1 or 2)
+            if 1 < num_cols:
+                excel_row[1] = safe_text(row.get('designation', ''))
+            
+            # Office (usually column 2 or 3)
+            if 2 < num_cols:
+                excel_row[2] = safe_text(row.get('present_office', ''))
+            
+            # Circle (usually column 3 or 4)
+            if 3 < num_cols:
+                excel_row[3] = safe_text(row.get('present_circle', ''))
+            
+            # Division (usually column 4 or 5)
+            if 4 < num_cols:
+                excel_row[4] = safe_text(row.get('present_division', ''))
+            
+            # Zone (usually column 5 or 6)
+            if 5 < num_cols:
+                excel_row[5] = safe_text(row.get('present_zone', ''))
+            
+            excel_data.append(excel_row)
+        
+        # Create DataFrame with numeric column indices
+        excel_frame = pd.DataFrame(excel_data)
+        return excel_frame
+    
     def load_dc_sheet(self, sheet_name, use_cache=True, filepath=None):
         self.check_file_modifications()
+        
+        # Try database first if available (currently disabled due to transformation complexity)
+        # if filepath is None and DATABASE_AVAILABLE:
+        #     try:
+        #         db_frame = self.load_cases_from_database(sheet_name)
+        #         if db_frame is not None and not db_frame.empty:
+        #             return db_frame
+        #     except Exception:
+        #         pass
         
         jurisdiction = "All"
         try:

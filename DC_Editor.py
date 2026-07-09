@@ -21,6 +21,13 @@ from DC_DataLoader import (
     safe_text,
 )
 
+# Try to import database manager
+try:
+    from DC_DatabaseManager import db_manager
+    DATABASE_AVAILABLE = True
+except ImportError:
+    DATABASE_AVAILABLE = False
+
 
 def normalize_header_key(text):
     text = str(text).lower().strip()
@@ -96,6 +103,27 @@ class DCEditor:
     def __init__(self, loader):
         self.loader = loader
         self.backups = DCBackupManager(loader.dc_file)
+
+    def save_case_to_database(self, case_data):
+        """Save case data to database"""
+        if not DATABASE_AVAILABLE:
+            return False
+        
+        try:
+            case_id = case_data.get('case_id')
+            # If case_id exists, it's an update (but we need the numeric id)
+            # For now, we'll just insert new cases
+            if not case_id:
+                # Generate a case ID
+                from datetime import datetime
+                sheet = case_data.get('sheet_origin', 'UNKNOWN')
+                cpf = case_data.get('cpf_no', 'UNKNOWN')
+                case_data['case_id'] = f"{sheet}_{cpf}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+            
+            return db_manager.insert_case(case_data)
+        except Exception as e:
+            print(f"Error saving case to database: {e}")
+            return False
 
     def open_wb(self, data_only=False, filepath=None):
         target = filepath if filepath else self.loader.dc_file

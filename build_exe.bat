@@ -7,7 +7,7 @@ rmdir /s /q build
 rmdir /s /q dist
 
 echo Building DAMS.exe...
-pyinstaller --noconfirm --onedir --windowed --add-data "templates;templates" --add-data "static;static" --hidden-import "pandas" --hidden-import "flask" --hidden-import "openpyxl" --exclude-module "tkinter" --exclude-module "matplotlib" --exclude-module "scipy" --exclude-module "PyQt5" --exclude-module "notebook" --exclude-module "IPython" --exclude-module "sqlalchemy" --name "DAMS" Run.py
+pyinstaller --noconfirm --onedir --windowed --add-data "templates;templates" --add-data "static;static" --add-data "runtime\database;runtime\database" --hidden-import "pandas" --hidden-import "flask" --hidden-import "openpyxl" --hidden-import "sqlite3" --exclude-module "tkinter" --exclude-module "matplotlib" --exclude-module "scipy" --exclude-module "PyQt5" --exclude-module "notebook" --exclude-module "IPython" --name "DAMS" Run.py
 
 echo Build complete! Your DAMS executable is in the 'dist/DAMS' folder.
 pause

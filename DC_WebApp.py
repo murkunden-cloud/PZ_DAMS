@@ -5,6 +5,10 @@ from datetime import datetime
 import tempfile
 import time
 import uuid
+import sys
+import requests
+import shutil
+import hashlib
 
 # --- TRAFFIC AND SUBSCRIPTION CONTROL ---
 MAX_ACTIVE_GUESTS = 5
@@ -23,6 +27,14 @@ from DC_DataLoader import META, has_cpf_value, normalize_cpf, row_to_strings, RU
 from DC_Editor import DCEditor, split_dispatch_date
 from DC_PendencyEngine import DCPendencyEngine, parse_case_date
 from DC_Reports import DCReports
+import sqlite3
+
+# Try to import database manager for archived cases
+try:
+    from DC_DatabaseManager import db_manager
+    DATABASE_AVAILABLE = True
+except ImportError:
+    DATABASE_AVAILABLE = False
 
 
 ORG_COLUMNS = {
@@ -33,6 +45,142 @@ ORG_COLUMNS = {
 }
 
 USERS_FILE = os.path.join(RUNTIME_DIR, "users.json")
+VERSION_FILE = os.path.join(os.path.dirname(__file__), "version.json")
+
+def load_version():
+    """Load current version information"""
+    try:
+        with open(VERSION_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {
+            "version": "1.0.0",
+            "release_date": "2026-07-06",
+            "update_server": "",
+            "auto_check": False,
+            "check_interval_hours": 24,
+            "changelog": "Initial release"
+        }
+
+def save_version(version_data):
+    """Save version information"""
+    try:
+        with open(VERSION_FILE, "w", encoding="utf-8") as f:
+            json.dump(version_data, f, indent=4)
+        return True
+    except Exception:
+        return False
+
+def check_for_updates():
+    """Check if updates are available from server"""
+    version_data = load_version()
+    if not version_data.get("update_server") or not version_data.get("auto_check"):
+        return None
+    
+    try:
+        response = requests.get(f"{version_data['update_server']}/version.json", timeout=10)
+        if response.status_code == 200:
+            remote_version = response.json()
+            current_version = version_data["version"]
+            
+            # Compare versions (simple string comparison for now)
+            if remote_version.get("version") != current_version:
+                return {
+                    "current": current_version,
+                    "available": remote_version.get("version"),
+                    "changelog": remote_version.get("changelog", ""),
+                    "download_url": f"{version_data['update_server']}/DAMS.exe",
+                    "size": remote_version.get("size", 0)
+                }
+    except Exception:
+        pass
+    
+    return None
+
+def download_update(download_url, progress_callback=None):
+    """Download update file with progress tracking"""
+    try:
+        response = requests.get(download_url, stream=True, timeout=30)
+        response.raise_for_status()
+        
+        total_size = int(response.headers.get('content-length', 0))
+        downloaded = 0
+        
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.exe')
+        
+        for chunk in response.iter_content(chunk_size=8192):
+           if chunk:
+                temp_file.write(chunk)
+                downloaded += len(chunk)
+                if progress_callback and total_size > 0:
+                    progress_callback(downloaded, total_size)
+        
+        temp_file.close()
+        return temp_file.name
+    except Exception as e:
+        return None
+
+def verify_update_integrity(file_path, expected_hash=None, checksum_url=None):
+    """Verify downloaded update file integrity"""
+    if expected_hash:
+        # Verify against provided hash
+        with open(file_path, 'rb') as f:
+            file_hash = hashlib.sha256(f.read()).hexdigest()
+        return file_hash == expected_hash
+    elif checksum_url:
+        # Download and verify against server checksums
+        try:
+            response = requests.get(checksum_url, timeout=10)
+            if response.status_code == 200:
+                checksums = response.json()
+                if "DAMS.exe" in checksums:
+                    expected_sha256 = checksums["DAMS.exe"].get("sha256")
+                    expected_size = checksums["DAMS.exe"].get("size")
+                    
+                    # Verify size first (faster)
+                    actual_size = os.path.getsize(file_path)
+                    if expected_size and actual_size != expected_size:
+                        return False
+                    
+                    # Verify SHA256
+                    if expected_sha256:
+                        with open(file_path, 'rb') as f:
+                            file_hash = hashlib.sha256(f.read()).hexdigest()
+                        return file_hash == expected_sha256
+        except Exception:
+            pass
+    
+    # Basic file integrity check
+    return os.path.exists(file_path) and os.path.getsize(file_path) > 1000000  # At least 1MB
+
+def apply_update(update_file_path):
+    """Apply the downloaded update"""
+    try:
+        # Get current executable path
+        if getattr(sys, 'frozen', False):
+            current_exe = sys.executable
+        else:
+            # Running from script, not exe
+            return False
+        
+        # Create backup
+        backup_path = current_exe + ".backup"
+        if os.path.exists(backup_path):
+            os.remove(backup_path)
+        shutil.copy2(current_exe, backup_path)
+        
+        # Replace with new version
+        shutil.copy2(update_file_path, current_exe)
+        
+        # Clean up temp file
+        os.remove(update_file_path)
+        
+        return True
+    except Exception as e:
+        # Restore from backup if update failed
+        if os.path.exists(backup_path):
+            shutil.copy2(backup_path, current_exe)
+        return False
 
 def load_users():
     default_users = {
@@ -1352,6 +1500,94 @@ def create_app(loader):
                            year=None, 
                            month=None)
 
+    @app.get("/archive")
+    @login_required
+    def archive_page():
+        """Archived cases page"""
+        if not DATABASE_AVAILABLE:
+            return render_page("error.html", 
+                             title="Database Not Available",
+                             message="Archived cases functionality requires database.")
+        
+        # Get search parameters
+        search_term = request.args.get("search", "").strip()
+        cpf_no = request.args.get("cpf", "").strip()
+        employee_name = request.args.get("name", "").strip()
+        case_type = request.args.get("type", "").strip()
+        archive_month = request.args.get("month", "").strip()
+        
+        # Search archived cases
+        results = db_manager.search_archived_cases(
+            search_term=search_term if search_term else None,
+            cpf_no=cpf_no if cpf_no else None,
+            employee_name=employee_name if employee_name else None,
+            case_type=case_type if case_type else None,
+            archive_month=archive_month if archive_month else None,
+            limit=100
+        )
+        
+        # Get available archive months
+        conn = sqlite3.connect(os.path.join(os.path.dirname(__file__), "runtime", "database", "dams.db"))
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT archive_month, COUNT(*) as count
+            FROM archived_cases 
+            GROUP BY archive_month 
+            ORDER BY archive_month DESC
+        """)
+        months = [{"month": row[0], "count": row[1]} for row in cursor.fetchall()]
+        conn.close()
+        
+        return render_page("archive.html", 
+                         cases=results,
+                         months=months,
+                         search_term=search_term,
+                         cpf_no=cpf_no,
+                         employee_name=employee_name,
+                         case_type=case_type,
+                         archive_month=archive_month)
+
+    @app.get("/archive/<int:case_id>")
+    @login_required
+    def archive_case_detail(case_id):
+        """View details of a specific archived case"""
+        if not DATABASE_AVAILABLE:
+            return render_page("error.html",
+                             title="Database Not Available",
+                             message="Archived cases functionality requires database.")
+        
+        case = db_manager.get_archived_case_by_id(case_id)
+        if not case:
+            return render_page("error.html",
+                             title="Case Not Found",
+                             message="The requested archived case was not found.")
+        
+        return render_page("archive_detail.html", case=case)
+
+    @app.post("/archive/process")
+    @admin_required
+    def process_archive():
+        """Process archival of previous month's closed cases"""
+        if not DATABASE_AVAILABLE:
+            return redirect(url_for("archive_page", message="Database not available", status="error"))
+        
+        from datetime import datetime
+        
+        # Get previous month
+        today = datetime.now()
+        if today.month == 1:
+            prev_month = today.replace(year=today.year - 1, month=12)
+        else:
+            prev_month = today.replace(month=today.month - 1)
+        
+        target_month = prev_month.strftime("%Y-%m")
+        
+        archived_count = db_manager.archive_closed_cases(target_month, archived_by=session.get("user_cpf", "admin"))
+        
+        return redirect(url_for("archive_page", 
+                               message=f"Archived {archived_count} cases from {target_month}",
+                               status="success"))
+
     @app.get("/users")
     @admin_required
     def manage_users():
@@ -1418,6 +1654,83 @@ def create_app(loader):
             save_users(users)
             return redirect(url_for("manage_users", message="User deleted successfully.", status="success"))
         return redirect(url_for("manage_users", message="User not found.", status="error"))
+
+    # --- AUTO UPDATE SYSTEM ---
+    @app.get("/updates")
+    @admin_required
+    def updates_page():
+        version_data = load_version()
+        update_info = check_for_updates()
+        return render_page("updates.html", version=version_data, update_info=update_info)
+
+    @app.post("/updates/check")
+    @admin_required
+    def check_updates():
+        update_info = check_for_updates()
+        if update_info:
+            return {
+                "success": True,
+                "has_update": True,
+                "current": update_info["current"],
+                "available": update_info["available"],
+                "changelog": update_info["changelog"],
+                "size": update_info["size"]
+            }
+        else:
+            return {
+                "success": True,
+                "has_update": False,
+                "message": "No updates available or update server not configured"
+            }
+
+    @app.post("/updates/download")
+    @admin_required
+    def download_update():
+        update_info = check_for_updates()
+        if not update_info:
+            return {"success": False, "error": "No updates available"}
+        
+        def progress_callback(downloaded, total):
+            # Could implement WebSocket or similar for real-time progress
+            pass
+        
+        version_data = load_version()
+        checksum_url = f"{version_data['update_server']}/checksums.json" if version_data.get("update_server") else None
+        
+        update_file = download_update(update_info["download_url"], progress_callback)
+        if update_file and verify_update_integrity(update_file, checksum_url=checksum_url):
+            return {
+                "success": True,
+                "file_path": update_file,
+                "message": "Update downloaded and verified successfully"
+            }
+        else:
+            return {"success": False, "error": "Failed to download or verify update"}
+
+    @app.post("/updates/apply")
+    @admin_required
+    def apply_update_route():
+        file_path = request.form.get("file_path")
+        if not file_path or not os.path.exists(file_path):
+            return {"success": False, "error": "Invalid update file"}
+        
+        if apply_update(file_path):
+            return {"success": True, "message": "Update applied successfully. Please restart the application."}
+        else:
+            return {"success": False, "error": "Failed to apply update"}
+
+    @app.post("/updates/configure")
+    @admin_required
+    def configure_updates():
+        version_data = load_version()
+        version_data["update_server"] = request.form.get("update_server", "").strip()
+        version_data["auto_check"] = request.form.get("auto_check") == "true"
+        version_data["check_interval_hours"] = int(request.form.get("check_interval_hours", 24))
+        
+        if save_version(version_data):
+            return redirect(url_for("updates_page", message="Update configuration saved successfully.", status="success"))
+        else:
+            return redirect(url_for("updates_page", message="Failed to save update configuration.", status="error"))
 
     @app.post("/exit")
     @login_required

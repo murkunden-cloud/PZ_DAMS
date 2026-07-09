@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Archived Case #{{ case.id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/archive">Archived Cases</a></li>
+                    <li class="breadcrumb-item active">Case #{{ case.id }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <h2>Archived Case Details</h2>
+            <p class="text-muted">Case ID: {{ case.original_case_id }}</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Case Information</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered">
+                        <tr>
+                            <th width="30%">Archive ID</th>
+                            <td>{{ case.id }}</td>
+                        </tr>
+                        <tr>
+                            <th>Original Case ID</th>
+                            <td>{{ case.original_case_id }}</td>
+                        </tr>
+                        <tr>
+                            <th>Case Type</th>
+                            <td>
+                                <span class="badge bg-{{ 'primary' if case.case_type == 'minor' else 'danger' if case.case_type == 'major' else 'warning' if case.case_type == 'suspension' else 'info' }}">
+                                    {{ case.case_type|upper }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Original Sheet</th>
+                            <td>{{ case.original_sheet_origin }}</td>
+                        </tr>
+                        <tr>
+                            <th>Original Scope</th>
+                            <td>{{ case.original_scope or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Case Closure Date</th>
+                            <td>{{ case.case_closure_date or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Archive Month</th>
+                            <td>{{ case.archive_month }}</td>
+                        </tr>
+                        <tr>
+                            <th>Archived At</th>
+                            <td>{{ case.archived_at }}</td>
+                        </tr>
+                        <tr>
+                            <th>Archived By</th>
+                            <td>{{ case.archived_by or 'System' }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Employee Information</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered">
+                        <tr>
+                            <th width="40%">CPF Number</th>
+                            <td>{{ case.cpf_no }}</td>
+                        </tr>
+                        <tr>
+                            <th>Employee Name</th>
+                            <td>{{ case.employee_name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Designation</th>
+                            <td>{{ case.designation or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Present Office</th>
+                            <td>{{ case.present_office or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Present Division</th>
+                            <td>{{ case.present_division or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Present Circle</th>
+                            <td>{{ case.present_circle or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Present Zone</th>
+                            <td>{{ case.present_zone or '-' }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Case Details</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered">
+                        <tr>
+                            <th width="30%">DC Number</th>
+                            <td>{{ case.dc_number or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>DC Date</th>
+                            <td>{{ case.dc_date or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Facts of Case</th>
+                            <td>{{ case.facts_of_case or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Chargesheet Details</th>
+                            <td>{{ case.chargesheet_details or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Enquiry Officer</th>
+                            <td>{{ case.enquiry_officer or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Punishment Awarded</th>
+                            <td>{{ case.punishment_awarded or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Appeal Details</th>
+                            <td>{{ case.appeal_details or '-' }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if case.case_type == 'suspension' or case.case_type == 'suspension_current' or case.case_type == 'suspension_revoke' %}
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Suspension Details</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered">
+                        <tr>
+                            <th width="30%">Suspension Start Date</th>
+                            <td>{{ case.suspension_start_date or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Suspension End Date</th>
+                            <td>{{ case.suspension_end_date or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Suspension Reason</th>
+                            <td>{{ case.suspension_reason or '-' }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Remarks</h5>
+                </div>
+                <div class="card-body">
+                    <p>{{ case.remarks or 'No remarks available.' }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-3">
+        <div class="col-12">
+            <a href="/archive" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Archive
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

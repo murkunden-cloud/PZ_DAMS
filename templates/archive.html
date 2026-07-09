@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Archived Cases{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2>Archived Cases</h2>
+            <p class="text-muted">Search and view closed cases from previous months</p>
+        </div>
+    </div>
+
+    <!-- Archive Process Button (Admin Only) -->
+    {% if session.get('user_role') == 'admin' %}
+    <div class="row mb-3">
+        <div class="col-12">
+            <form method="POST" action="/archive/process" class="d-inline">
+                <button type="submit" class="btn btn-warning" onclick="return confirm('Archive closed cases from previous month? This will move them from active cases to archive.')">
+                    <i class="fas fa-archive"></i> Archive Previous Month Cases
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Search Form -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Search Archived Cases</h5>
+                </div>
+                <div class="card-body">
+                    <form method="GET" action="/archive" class="row g-3">
+                        <div class="col-md-3">
+                            <input type="text" name="search" class="form-control" placeholder="Search (CPF/Name/DC)" value="{{ search_term }}">
+                        </div>
+                        <div class="col-md-2">
+                            <input type="text" name="cpf" class="form-control" placeholder="CPF Number" value="{{ cpf_no }}">
+                        </div>
+                        <div class="col-md-2">
+                            <input type="text" name="name" class="form-control" placeholder="Employee Name" value="{{ employee_name }}">
+                        </div>
+                        <div class="col-md-2">
+                            <select name="type" class="form-select">
+                                <option value="">All Types</option>
+                                <option value="minor" {% if case_type == 'minor' %}selected{% endif %}>Minor</option>
+                                <option value="major" {% if case_type == 'major' %}selected{% endif %}>Major</option>
+                                <option value="suspension" {% if case_type == 'suspension' %}selected{% endif %}>Suspension</option>
+                                <option value="appeal" {% if case_type == 'appeal' %}selected{% endif %}>Appeal</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select name="month" class="form-select">
+                                <option value="">All Months</option>
+                                {% for month in months %}
+                                <option value="{{ month.month }}" {% if archive_month == month.month %}selected{% endif %}>
+                                    {{ month.month }} ({{ month.count }} cases)
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-1">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-search"></i> Search
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div class="row">
+        <div class="col-12">
+            {% if cases %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Found {{ cases|length }} Archived Cases</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Archive ID</th>
+                                    <th>CPF</th>
+                                    <th>Employee Name</th>
+                                    <th>Type</th>
+                                    <th>Original Sheet</th>
+                                    <th>DC Number</th>
+                                    <th>Closure Date</th>
+                                    <th>Archive Month</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for case in cases %}
+                                <tr>
+                                    <td>{{ case.id }}</td>
+                                    <td>{{ case.cpf_no }}</td>
+                                    <td>{{ case.employee_name }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'primary' if case.case_type == 'minor' else 'danger' if case.case_type == 'major' else 'warning' if case.case_type == 'suspension' else 'info' }}">
+                                            {{ case.case_type|upper }}
+                                        </span>
+                                    </td>
+                                    <td>{{ case.original_sheet_origin }}</td>
+                                    <td>{{ case.dc_number or '-' }}</td>
+                                    <td>{{ case.case_closure_date or '-' }}</td>
+                                    <td>{{ case.archive_month }}</td>
+                                    <td>
+                                        <a href="/archive/{{ case.id }}" class="btn btn-sm btn-info">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> No archived cases found matching your search criteria.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

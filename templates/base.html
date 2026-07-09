@@ -359,6 +359,9 @@
                 </li>
                 {% endif %}
                 <li><a href="/users" id="nav-users">👥 Manage Users</a></li>
+                {% if is_admin %}
+                <li><a href="/updates" id="nav-updates">🔄 System Updates</a></li>
+                {% endif %}
                 <li><a href="/export" style="color: #2ecc71; font-weight: bold;">📥 Export Excel File</a></li>
                 <li style="margin-top: 20px; border-top: 1px solid #34495e; padding-top: 10px;">
                     <a href="#" onclick="if(confirm('Are you sure you want to shutdown and exit the DAMS program?')){ document.getElementById('exit-form').submit(); }" style="color: #ff7675; border-left-color: #d63031;">❌ Exit Program</a>

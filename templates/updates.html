@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% set page_title = "System Updates" %}
+{% block content %}
+
+<div class="grid one" style="gap: 20px;">
+    <!-- Current Version Info -->
+    <div class="window-panel">
+        <div class="window-header">
+            <span>📌 Current Version Information</span>
+        </div>
+        <div class="window-body">
+            <table style="width: 100%;">
+                <tr>
+                    <td style="padding: 10px; font-weight: bold;">Version:</td>
+                    <td style="padding: 10px;"><code>{{ version.version }}</code></td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; font-weight: bold;">Release Date:</td>
+                    <td style="padding: 10px;">{{ version.release_date }}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; font-weight: bold;">Update Server:</td>
+                    <td style="padding: 10px;">
+                        {% if version.update_server %}
+                        <code>{{ version.update_server }}</code>
+                        {% else %}
+                        <span style="color: #e74c3c;">Not configured</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; font-weight: bold;">Auto Check:</td>
+                    <td style="padding: 10px;">
+                        <span style="color: {% if version.auto_check %}#27ae60{% else %}#e74c3c{% endif %};">
+                            {{ 'Enabled' if version.auto_check else 'Disabled' }}
+                        </span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; font-weight: bold;">Check Interval:</td>
+                    <td style="padding: 10px;">Every {{ version.check_interval_hours }} hours</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- Update Server Configuration -->
+    <div class="window-panel">
+        <div class="window-header">
+            <span>⚙️ Configure Update Server</span>
+        </div>
+        <div class="window-body">
+            <form method="post" action="/updates/configure">
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Update Server URL</label>
+                    <input type="text" name="update_server" placeholder="http://your-server.com/updates" value="{{ version.update_server }}" style="width: 100%; padding: 10px;">
+                    <small style="color: #7f8c8d;">Enter the URL where updates will be hosted</small>
+                </div>
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>
+                        <input type="checkbox" name="auto_check" value="true" {% if version.auto_check %}checked{% endif %}>
+                        Enable automatic update checking
+                    </label>
+                </div>
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Check Interval (hours)</label>
+                    <input type="number" name="check_interval_hours" value="{{ version.check_interval_hours }}" min="1" max="168" style="width: 100px; padding: 10px;">
+                </div>
+                <button type="submit" class="btn btn-primary">💾 Save Configuration</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Check for Updates -->
+    <div class="window-panel">
+        <div class="window-header">
+            <span>🔄 Check for Updates</span>
+        </div>
+        <div class="window-body">
+            <div id="update-status" style="margin-bottom: 15px;">
+                {% if update_info %}
+                <div style="background: #fff3cd; color: #856404; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107;">
+                    <strong>🎉 Update Available!</strong><br>
+                    <strong>Current Version:</strong> {{ update_info.current }}<br>
+                    <strong>New Version:</strong> {{ update_info.available }}<br>
+                    <strong>Size:</strong> {{ "%.2f MB"|format(update_info.size / 1024 / 1024) if update_info.size else 'Unknown' }}<br>
+                    <strong>Changelog:</strong><br>
+                    <pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin-top: 5px;">{{ update_info.changelog }}</pre>
+                </div>
+                {% else %}
+                <div style="background: #d4edda; color: #155724; padding: 15px; border-radius: 6px; border-left: 4px solid #28a745;">
+                    <strong>✅ Your system is up to date</strong>
+                </div>
+                {% endif %}
+            </div>
+            
+            <button type="button" class="btn btn-primary" onclick="checkForUpdates()" style="margin-right: 10px;">🔍 Check Now</button>
+            
+            {% if update_info %}
+            <button type="button" class="btn btn-success" onclick="downloadUpdate()">⬇️ Download Update</button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Update Progress -->
+    <div class="window-panel" id="progress-panel" style="display: none;">
+        <div class="window-header">
+            <span>📥 Download Progress</span>
+        </div>
+        <div class="window-body">
+            <div style="background: #e9ecef; border-radius: 6px; height: 30px; margin-bottom: 10px; overflow: hidden;">
+                <div id="progress-bar" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 100%; width: 0%; transition: width 0.3s;"></div>
+            </div>
+            <div id="progress-text" style="text-align: center; font-weight: bold;">0%</div>
+        </div>
+    </div>
+
+    <!-- Apply Update -->
+    <div class="window-panel" id="apply-panel" style="display: none;">
+        <div class="window-header">
+            <span>🚀 Apply Update</span>
+        </div>
+        <div class="window-body">
+            <p style="margin-bottom: 15px;">Update downloaded successfully. Click below to apply the update. The application will restart automatically.</p>
+            <button type="button" class="btn btn-warning" onclick="applyUpdate()">⚡ Apply Update & Restart</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Highlight active sidebar navigation
+    document.querySelectorAll('.sidebar-menu a').forEach(el => el.classList.remove('active'));
+    document.getElementById('nav-updates').classList.add('active');
+
+    function checkForUpdates() {
+        fetch('/updates/check', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.has_update) {
+                document.getElementById('update-status').innerHTML = `
+                    <div style="background: #fff3cd; color: #856404; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107;">
+                        <strong>🎉 Update Available!</strong><br>
+                        <strong>Current Version:</strong> ${data.current}<br>
+                        <strong>New Version:</strong> ${data.available}<br>
+                        <strong>Size:</strong> ${data.size ? (data.size / 1024 / 1024).toFixed(2) + ' MB' : 'Unknown'}<br>
+                        <strong>Changelog:</strong><br>
+                        <pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin-top: 5px;">${data.changelog}</pre>
+                    </div>
+                `;
+                // Add download button
+                document.getElementById('update-status').innerHTML += `
+                    <button type="button" class="btn btn-success" onclick="downloadUpdate()" style="margin-top: 10px;">⬇️ Download Update</button>
+                `;
+            } else {
+                document.getElementById('update-status').innerHTML = `
+                    <div style="background: #d4edda; color: #155724; padding: 15px; border-radius: 6px; border-left: 4px solid #28a745;">
+                        <strong>✅ ${data.message}</strong>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            document.getElementById('update-status').innerHTML = `
+                <div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 6px; border-left: 4px solid #dc3545;">
+                    <strong>❌ Error checking for updates: ${error.message}</strong>
+                </div>
+            `;
+        });
+    }
+
+    function downloadUpdate() {
+        document.getElementById('progress-panel').style.display = 'block';
+        
+        fetch('/updates/download', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('progress-bar').style.width = '100%';
+                document.getElementById('progress-text').textContent = '100% - Download Complete!';
+                document.getElementById('apply-panel').style.display = 'block';
+                // Store file path for applying update
+                window.updateFilePath = data.file_path;
+            } else {
+                document.getElementById('progress-panel').style.display = 'none';
+                alert('Download failed: ' + data.error);
+            }
+        })
+        .catch(error => {
+            document.getElementById('progress-panel').style.display = 'none';
+            alert('Download error: ' + error.message);
+        });
+    }
+
+    function applyUpdate() {
+        if (!window.updateFilePath) {
+            alert('No update file available');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file_path', window.updateFilePath);
+
+        fetch('/updates/apply', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Update applied successfully! The application will now restart.');
+                window.location.href = '/exit';
+            } else {
+                alert('Failed to apply update: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Error applying update: ' + error.message);
+        });
+    }
+</script>
+{% endblock %}

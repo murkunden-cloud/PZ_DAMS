@@ -1,0 +1,8 @@
+{
+  "version": "1.0.0",
+  "release_date": "2026-07-06",
+  "update_server": "http://your-server.com/updates",
+  "auto_check": true,
+  "check_interval_hours": 24,
+  "changelog": "Initial release with auto-update capability"
+}
