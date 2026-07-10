@@ -4,72 +4,7 @@ import json
 from datetime import datetime
 from contextlib import contextmanager
 
-try:
-    import psycopg2
-    import psycopg2.extras
-    PSYCOPG2_AVAILABLE = True
-except ImportError:
-    PSYCOPG2_AVAILABLE = False
-
-DATABASE_URL = os.environ.get("DATABASE_URL")
-IS_POSTGRES = DATABASE_URL and DATABASE_URL.startswith("postgres")
-
-IS_VERCEL = os.environ.get("VERCEL") == "1"
-if IS_VERCEL:
-    DB_PATH = "/tmp/runtime/database/dams.db"
-else:
-    DB_PATH = os.path.join(os.path.dirname(__file__), "runtime", "database", "dams.db")
-
-class CursorWrapper:
-    def __init__(self, cursor, is_postgres=False):
-        self.cursor = cursor
-        self.is_postgres = is_postgres
-        
-    def _convert_query(self, query):
-        if self.is_postgres:
-            return query.replace('?', '%s')
-        return query
-        
-    def execute(self, query, params=None):
-        converted = self._convert_query(query)
-        if params:
-            self.cursor.execute(converted, params)
-        else:
-            self.cursor.execute(converted)
-            
-    def fetchone(self):
-        return self.cursor.fetchone()
-        
-    def fetchall(self):
-        return self.cursor.fetchall()
-        
-    @property
-    def rowcount(self):
-        return self.cursor.rowcount
-        
-    @property
-    def lastrowid(self):
-        return self.cursor.lastrowid
-
-class ConnWrapper:
-    def __init__(self, conn, is_postgres):
-        self.conn = conn
-        self.is_postgres = is_postgres
-        
-    def cursor(self):
-        if self.is_postgres:
-            return CursorWrapper(self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor), True)
-        else:
-            return CursorWrapper(self.conn.cursor(), False)
-            
-    def commit(self):
-        self.conn.commit()
-        
-    def rollback(self):
-        self.conn.rollback()
-        
-    def close(self):
-        self.conn.close()
+DB_PATH = os.path.join(os.path.dirname(__file__), "runtime", "database", "dams.db")
 
 class DatabaseManager:
     def __init__(self, db_path=None):
@@ -77,27 +12,16 @@ class DatabaseManager:
         
     @contextmanager
     def get_connection(self):
-        if IS_POSTGRES and PSYCOPG2_AVAILABLE:
-            conn = psycopg2.connect(DATABASE_URL)
-            try:
-                yield ConnWrapper(conn, True)
-                conn.commit()
-            except Exception:
-                conn.rollback()
-                raise
-            finally:
-                conn.close()
-        else:
-            conn = sqlite3.connect(self.db_path)
-            conn.row_factory = sqlite3.Row
-            try:
-                yield ConnWrapper(conn, False)
-                conn.commit()
-            except Exception:
-                conn.rollback()
-                raise
-            finally:
-                conn.close()
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
     
     def get_employee_by_cpf(self, cpf):
         with self.get_connection() as conn:
@@ -119,13 +43,12 @@ class DatabaseManager:
     def insert_case(self, case_data):
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            query = """
+            cursor.execute("""
                 INSERT INTO disciplinary_cases 
                 (case_id, case_type, case_status, sheet_origin, scope, cpf_no, 
                  employee_name, designation, present_office, facts_of_case, created_by)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """
-            params = (
+            """, (
                 case_data.get('case_id'),
                 case_data.get('case_type'),
                 case_data.get('case_status', 'active'),
@@ -137,16 +60,8 @@ class DatabaseManager:
                 case_data.get('present_office'),
                 case_data.get('facts_of_case'),
                 case_data.get('created_by', 'system')
-            )
-            
-            if IS_POSTGRES and PSYCOPG2_AVAILABLE:
-                query += " RETURNING id"
-                cursor.execute(query, params)
-                row = cursor.fetchone()
-                return row['id'] if row else None
-            else:
-                cursor.execute(query, params)
-                return cursor.lastrowid
+            ))
+            return cursor.lastrowid
     
     def update_case(self, case_id, update_data, updated_by):
         with self.get_connection() as conn:
@@ -220,8 +135,8 @@ class DatabaseManager:
                 SELECT * FROM disciplinary_cases 
                 WHERE case_status IN ('closed', 'finalised', 'revoked')
                 AND case_closure_date IS NOT NULL
-                AND case_closure_date LIKE ?
-            """, (target_month + '%',))
+                AND strftime('%Y-%m', case_closure_date) = ?
+            """, (target_month,))
             
             cases_to_archive = cursor.fetchall()
             archived_count = 0
@@ -238,7 +153,7 @@ class DatabaseManager:
                      chargesheet_details, enquiry_officer, punishment_awarded, appeal_details,
                      suspension_start_date, suspension_end_date, suspension_reason,
                      case_closure_date, closure_reason, remarks, archived_by, archive_month)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     case_dict.get('case_id'),
                     case_dict.get('case_type'),
@@ -262,7 +177,7 @@ class DatabaseManager:
                     case_dict.get('suspension_end_date'),
                     case_dict.get('suspension_reason'),
                     case_dict.get('case_closure_date'),
-                    case_dict.get('remarks'),
+                    case_dict.get('remarks'),  # Using remarks as closure reason
                     case_dict.get('remarks'),
                     archived_by,
                     target_month

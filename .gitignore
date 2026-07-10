@@ -66,3 +66,8 @@ check_*.py
 # Temporary files
 *.tmp
 *.bak
+
+# Environment variables
+.env
+.env.local
+.env.*

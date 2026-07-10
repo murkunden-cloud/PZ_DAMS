@@ -25,7 +25,14 @@ else:
     APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
-RUNTIME_DIR = os.path.join(APP_DIR, "runtime")
+
+IS_VERCEL = os.environ.get("VERCEL") == "1"
+
+if IS_VERCEL:
+    RUNTIME_DIR = "/tmp/runtime"
+else:
+    RUNTIME_DIR = os.path.join(APP_DIR, "runtime")
+
 BACKUP_DIR = os.path.join(RUNTIME_DIR, "backups")
 CACHE_DIR = os.path.join(RUNTIME_DIR, "cache")
 REPORT_DIR = os.path.join(RUNTIME_DIR, "reports")

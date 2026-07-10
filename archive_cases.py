@@ -25,27 +25,33 @@ def archive_previous_month_closed_cases():
 
 def list_archived_months():
     """List all months that have archived cases"""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    cursor.execute("""
-        SELECT archive_month, COUNT(*) as count, 
-               MIN(case_closure_date) as first_closure,
-               MAX(case_closure_date) as last_closure
-        FROM archived_cases 
-        GROUP BY archive_month 
-        ORDER BY archive_month DESC
-    """)
-    
-    months = cursor.fetchall()
-    conn.close()
-    
-    print("\nArchived cases by month:")
-    print("Month\tCount\tFirst Closure\tLast Closure")
-    print("-" * 60)
-    for month in months:
-        print(f"{month[0]}\t{month[1]}\t{month[2]}\t{month[3]}")
-    
+    with db_manager.get_connection() as conn:
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT archive_month, COUNT(*) as count, 
+                   MIN(case_closure_date) as first_closure,
+                   MAX(case_closure_date) as last_closure
+            FROM archived_cases 
+            GROUP BY archive_month 
+            ORDER BY archive_month DESC
+        """)
+        
+        months = cursor.fetchall()
+        
+        if not months:
+            print("No archived cases found.")
+            return
+            
+        print("\nArchived Months:")
+        print("-" * 60)
+        print(f"{'Month':<10} | {'Cases':<6} | {'First Closure':<15} | {'Last Closure':<15}")
+        print("-" * 60)
+        
+        for m in months:
+            print(f"{m[0]:<10} | {m[1]:<6} | {str(m[2]):<15} | {str(m[3]):<15}")
+        
+        print("-" * 60)
     return months
 
 def search_archived_cases(search_term=None, cpf_no=None, employee_name=None):

@@ -1527,16 +1527,15 @@ def create_app(loader):
         )
         
         # Get available archive months
-        conn = sqlite3.connect(os.path.join(os.path.dirname(__file__), "runtime", "database", "dams.db"))
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT archive_month, COUNT(*) as count
-            FROM archived_cases 
-            GROUP BY archive_month 
-            ORDER BY archive_month DESC
-        """)
-        months = [{"month": row[0], "count": row[1]} for row in cursor.fetchall()]
-        conn.close()
+        with db_manager.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT archive_month, COUNT(*) as count
+                FROM archived_cases 
+                GROUP BY archive_month 
+                ORDER BY archive_month DESC
+            """)
+            months = [{"month": row[0], "count": row[1]} for row in cursor.fetchall()]
         
         return render_page("archive.html", 
                          cases=results,
