@@ -9,14 +9,15 @@ import traceback
 try:
     from DC_DataLoader import DCDataLoader
     from DC_WebApp import create_app
-
-    # Initialize the data loader
     loader = DCDataLoader()
-
-    # Create the Flask app
-    app = create_app(loader)
+    success = True
 except Exception as e:
     err_str = traceback.format_exc()
+    success = False
+
+if success:
+    app = create_app(loader)
+else:
     from flask import Flask
     app = Flask(__name__)
     
