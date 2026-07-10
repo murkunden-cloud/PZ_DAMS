@@ -44,8 +44,8 @@ cache/
 backups/
 reports/
 *.pkl
-*.xlsx
-*.xls
+# *.xlsx
+# *.xls
 config.ini
 login_credentials.txt
 
