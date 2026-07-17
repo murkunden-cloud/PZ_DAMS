@@ -205,32 +205,28 @@ class DCDataLoader:
         self._last_emp_mtime = 0
 
     def check_file_modifications(self):
-        if os.path.exists(self.dc_file):
-            mtime = os.path.getmtime(self.dc_file)
-            if mtime > self._last_dc_mtime:
-                self._sheet_cache.clear()
-                for name in os.listdir(self.cache_dir):
-                    if name.startswith("dc_") and name.endswith(".pkl"):
-                        pkl_path = os.path.join(self.cache_dir, name)
-                        try:
-                            if os.path.getmtime(pkl_path) < mtime:
-                                os.remove(pkl_path)
-                        except OSError:
-                            pass
-                self._last_dc_mtime = mtime
+        dc_mtime = os.path.getmtime(self.dc_file) if os.path.exists(self.dc_file) else 0
+        emp_mtime = os.path.getmtime(self.emp_file) if os.path.exists(self.emp_file) else 0
+
+        # On first run or if modified, clear everything and reload
+        if (self._last_dc_mtime != 0 and dc_mtime != self._last_dc_mtime) or \
+           (self._last_emp_mtime != 0 and emp_mtime != self._last_emp_mtime):
+            self.clear_cache()
+            self._last_dc_mtime = dc_mtime
+            self._last_emp_mtime = emp_mtime
+        elif self._last_dc_mtime == 0 or self._last_emp_mtime == 0:
+            self._last_dc_mtime = dc_mtime
+            self._last_emp_mtime = emp_mtime
             
-        if os.path.exists(self.emp_file):
-            mtime = os.path.getmtime(self.emp_file)
-            if mtime > self._last_emp_mtime:
-                self._emp_cache = None
-                emp_pkl = os.path.join(self.cache_dir, "emp.pkl")
-                if os.path.exists(emp_pkl):
+            for name in os.listdir(self.cache_dir):
+                if name.endswith(".pkl"):
+                    pkl_path = os.path.join(self.cache_dir, name)
                     try:
-                        if os.path.getmtime(emp_pkl) < mtime:
-                            os.remove(emp_pkl)
+                        pkl_mtime = os.path.getmtime(pkl_path)
+                        if (dc_mtime > 0 and pkl_mtime < dc_mtime) or (emp_mtime > 0 and pkl_mtime < emp_mtime):
+                            os.remove(pkl_path)
                     except OSError:
                         pass
-                self._last_emp_mtime = mtime
 
     def clear_cache(self):
         self._emp_cache = None
