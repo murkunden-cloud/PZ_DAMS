@@ -77,8 +77,8 @@ class DCPendencyEngine:
         pend["major"]["sw"] = sheet_counts.get("22DC", 0)
         pend["major"]["cw"] = sheet_counts.get("23DC", 0)
         pend["major"]["total"] = pend["major"]["sw"] + pend["major"]["cw"]
-        pend["suspension"]["sw"] = sheet_counts.get("14DC", 0) or sheet_counts.get("12DC", 0)
-        pend["suspension"]["cw"] = sheet_counts.get("15DC", 0) or sheet_counts.get("13DC", 0)
+        pend["suspension"]["sw"] = sheet_counts.get("12DC", 0)
+        pend["suspension"]["cw"] = sheet_counts.get("13DC", 0)
         pend["suspension"]["total"] = pend["suspension"]["sw"] + pend["suspension"]["cw"]
         pend["revoke"]["sw"] = sheet_counts.get("16DC", 0)
         pend["revoke"]["cw"] = sheet_counts.get("17DC", 0)
@@ -150,27 +150,23 @@ class DCPendencyEngine:
         if frame is None or frame.empty:
             return 0, 0
         meta = META.get("6DC", {})
-        cpf_index = meta.get("cpf_col", 3) - 1
-        current = "sw"
+        cpf_index = meta.get("cpf_col", 4) - 1
+        pg_index = 4  # Pay Group is at index 4 for 6DC
         sw = 0
         cw = 0
-        marker_columns = min(frame.shape[1], 8)
         for _, row in frame.iterrows():
             cpf = row.iloc[cpf_index] if cpf_index < frame.shape[1] else None
             if not has_cpf_value(cpf):
                 continue
-            for col_index in range(marker_columns):
-                text = str(row.iloc[col_index]).strip().lower()
-                if "circle wise" in text or "circlewise" in text:
-                    current = "cw"
-                    break
-                if "statewise" in text or "state wise" in text:
-                    current = "sw"
-                    break
-            if current == "sw":
+            
+            pg = str(row.iloc[pg_index]).strip().upper() if pg_index < frame.shape[1] else ""
+            if pg in ['I', 'II', '1', '2']:
                 sw += 1
-            elif current == "cw":
+            elif pg in ['III', 'IV', '3', '4']:
                 cw += 1
+            else:
+                sw += 1
+                
         return sw, cw
 
     def _sorted_summary(self, mapping):

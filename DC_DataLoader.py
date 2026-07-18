@@ -149,13 +149,12 @@ def normalize_cpf(value):
     digits = re.sub(r"\D+", "", text)
     if digits:
         return digits.lstrip("0") or "0"
-    return text.lower()
-
+    return ""  # If no digits found, it's not a valid CPF
 
 def has_cpf_value(value):
     raw = str(value).strip().lower() if value is not None else ""
     norm = normalize_cpf(value)
-    return bool(norm) and raw not in ("cpfno", "sr. no.", "srl no.", "name", "3", "4")
+    return bool(norm) and norm.isdigit()
 
 
 def extract_dc(text):
@@ -177,9 +176,19 @@ def extract_dc(text):
 
 
 def safe_text(value):
-    if value is None:
+    import pandas as pd
+    if value is None or pd.isna(value):
         return ""
-    return str(value).strip()
+    text = str(value).strip()
+    if text.lower() in ("nan", "nat", "none"):
+        return ""
+        
+    import re
+    match = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})(?: \d{2}:\d{2}:\d{2}(?:\.\d+)?)?", text)
+    if match:
+        return f"{match.group(3)}-{match.group(2)}-{match.group(1)}"
+        
+    return text
 
 
 def row_to_strings(row_values, limit=None):
@@ -362,90 +371,174 @@ class DCDataLoader:
             return val.get('paygrp', '')
         return ""
 
+    def normalize_paygroup(self, pg_val):
+        if not pg_val:
+            return ""
+        val = str(pg_val).strip().upper()
+        if val in ("1", "1.0", "I"): return "I"
+        if val in ("2", "2.0", "II"): return "II"
+        if val in ("3", "3.0", "III"): return "III"
+        if val in ("4", "4.0", "IV"): return "IV"
+        return val
+
+    def resolve_seniority(self, designation, paygroup):
+        pg = self.normalize_paygroup(paygroup)
+        if pg in ("I", "II"):
+            return "State"
+        elif pg == "IV":
+            return "Circle"
+        else: # III or other
+            return self.get_designation_seniority(designation)
+
     def load_cases_from_database(self, sheet_name):
         """Load cases from database instead of Excel"""
         if not DATABASE_AVAILABLE:
             return None
         try:
             cases = db_manager.get_cases_by_sheet(sheet_name)
-            if cases:
-                df = pd.DataFrame(cases)
-                # Transform database columns to Excel-like format
-                # Map database columns to Excel column positions based on META
-                meta = self.meta.get(sheet_name, {})
-                excel_frame = self._transform_db_to_excel_format(df, sheet_name, meta)
-                return excel_frame
+            df = pd.DataFrame(cases) if cases else pd.DataFrame()
+            # Transform database columns to Excel-like format
+            # Map database columns to Excel column positions based on META
+            meta = self.meta.get(sheet_name, {})
+            excel_frame = self._transform_db_to_excel_format(df, sheet_name, meta)
+            return excel_frame
         except Exception as e:
             print(f"Error loading from database: {e}")
         return None
     
     def _transform_db_to_excel_format(self, db_df, sheet_name, meta):
         """Transform database DataFrame to Excel-like format with numeric columns"""
-        # Create a DataFrame with numeric column indices like Excel
-        # We'll create columns that match the Excel structure
-        num_cols = max(meta.get("cpf_col", 4), meta.get("dc_col", 10), meta.get("facts_col", 9)) + 5
-        excel_data = []
+        num_cols = max(meta.get("cpf_col", 4), meta.get("dc_col", 10), meta.get("facts_col", 9)) + 15
         
-        for _, row in db_df.iterrows():
-            # Create row with empty strings for all columns
+        # Helper to format a single row
+        def format_row(row):
             excel_row = [""] * num_cols
             
-            # Map database fields to Excel column positions based on META
-            # Column 0: Employee name
-            excel_row[0] = safe_text(row.get('employee_name', ''))
+            # Reconstruct Full Name, Designation, and Office
+            name_part = safe_text(row.get('employee_name', ''))
+            desig_part = safe_text(row.get('designation', ''))
+            office_part = safe_text(row.get('present_office', ''))
             
-            # CPF column (1-indexed in META, 0-indexed in DataFrame)
+            # User requested only name in column 1
+            excel_row[1] = name_part
+            
+            # Place Designation and Office in columns 2 and 3 if available
+            excel_row[2] = desig_part
+            excel_row[3] = office_part
+            
             cpf_col = meta.get("cpf_col", 4) - 1
             if cpf_col >= 0 and cpf_col < num_cols:
                 excel_row[cpf_col] = safe_text(row.get('cpf_no', ''))
-            
-            # DC number column
+                
             dc_col = meta.get("dc_col", 10) - 1
             if dc_col >= 0 and dc_col < num_cols:
                 excel_row[dc_col] = safe_text(row.get('dc_number', ''))
-            
-            # Facts column
+                
             facts_col = meta.get("facts_col", 9) - 1
             if facts_col >= 0 and facts_col < num_cols:
                 excel_row[facts_col] = safe_text(row.get('facts_of_case', ''))
+
+            # Map the specific export columns based on sheet structure
+            if sheet_name in ["6DC", "7DC", "8DC"]:
+                if len(excel_row) > 20:
+                    raw_pg = row.get('pay_group', '')
+                    pg = self.normalize_paygroup(raw_pg) or self.get_designation_paygrp(desig_part) or "IV"
+                    excel_row[4] = safe_text(pg)
+                    dob = safe_text(row.get('birth_date', ''))
+                    ret = safe_text(row.get('retirement_date', ''))
+                    excel_row[5] = f"{dob}\n{ret}" if dob or ret else ""
+                    excel_row[6] = office_part
+                    
+                    excel_row[8] = safe_text(row.get('export_type_of_case', ''))
+                    excel_row[9] = safe_text(row.get('facts_of_case', ''))
+                    excel_row[10] = safe_text(row.get('dc_number', ''))
+                    excel_row[11] = safe_text(row.get('export_suspension_details', ''))
+                    excel_row[12] = safe_text(row.get('export_present_status', ''))
+                    excel_row[15] = safe_text(row.get('export_final_order', ''))
+                    excel_row[16] = safe_text(row.get('export_outcome', ''))
+                    excel_row[17] = safe_text(row.get('present_circle', ''))
+                    excel_row[18] = safe_text(row.get('dc_record_number', ''))
+                    excel_row[19] = safe_text(row.get('dc_record_date', ''))
+                    excel_row[20] = safe_text(row.get('remarks', ''))
+
+            elif sheet_name in ["22DC", "23DC", "20DC", "21DC", "24DC", "25DC"]:
+                if len(excel_row) > 20:
+                    raw_pg = row.get('pay_group', '')
+                    pg = self.normalize_paygroup(raw_pg) or self.get_designation_paygrp(desig_part) or "IV"
+                    excel_row[4] = safe_text(pg)
+                    dob = safe_text(row.get('birth_date', ''))
+                    ret = safe_text(row.get('retirement_date', ''))
+                    excel_row[5] = f"{dob}\n{ret}" if dob or ret else ""
+                    excel_row[6] = office_part
+                    
+                    excel_row[8] = safe_text(row.get('export_type_of_case', ''))
+                    excel_row[9] = safe_text(row.get('facts_of_case', ''))
+                    excel_row[10] = safe_text(row.get('dc_number', ''))
+                    excel_row[11] = safe_text(row.get('export_suspension_details', ''))
+                    excel_row[12] = safe_text(row.get('enquiry_officer', ''))
+                    excel_row[13] = safe_text(row.get('report_received_date', ''))
+                    excel_row[14] = safe_text(row.get('scn_issued_details', ''))
+                    excel_row[15] = safe_text(row.get('export_final_order', ''))
+                    excel_row[16] = safe_text(row.get('export_outcome', ''))
+                    excel_row[17] = safe_text(row.get('present_circle', ''))
+                    excel_row[18] = safe_text(row.get('dc_record_number', ''))
+                    excel_row[19] = safe_text(row.get('dc_record_date', ''))
+                    excel_row[20] = safe_text(row.get('remarks', ''))
             
-            # Designation (usually column 1 or 2)
-            if 1 < num_cols:
-                excel_row[1] = safe_text(row.get('designation', ''))
-            
-            # Office (usually column 2 or 3)
-            if 2 < num_cols:
-                excel_row[2] = safe_text(row.get('present_office', ''))
-            
-            # Circle (usually column 3 or 4)
-            if 3 < num_cols:
-                excel_row[3] = safe_text(row.get('present_circle', ''))
-            
-            # Division (usually column 4 or 5)
-            if 4 < num_cols:
-                excel_row[4] = safe_text(row.get('present_division', ''))
-            
-            # Zone (usually column 5 or 6)
-            if 5 < num_cols:
-                excel_row[5] = safe_text(row.get('present_zone', ''))
-            
-            excel_data.append(excel_row)
+            return excel_row
+
+        excel_data = []
+        start_row = max(meta.get("data_start", 5) - 1, 0)
         
-        # Create DataFrame with numeric column indices
+        # If 6DC (Consolidated), bifurcate into State vs Circle
+        if sheet_name == "6DC":
+            state_cases = []
+            circle_cases = []
+            
+            for _, row in db_df.iterrows():
+                desig = safe_text(row.get('designation', ''))
+                seniority = self.get_designation_seniority(desig)
+                if seniority.lower() == "state":
+                    state_cases.append(format_row(row))
+                else:
+                    circle_cases.append(format_row(row))
+                    
+            # Headers for State
+            for _ in range(start_row):
+                excel_data.append([""] * num_cols)
+                
+            excel_data.extend(state_cases)
+            
+            # Separator for Circle cases
+            sep_row = [""] * num_cols
+            sep_row[1] = "Circlewise Seniority"
+            excel_data.append(sep_row)
+            
+            excel_data.extend(circle_cases)
+            
+        else:
+            # Default padding
+            for _ in range(start_row):
+                excel_data.append([""] * num_cols)
+                
+            for _, row in db_df.iterrows():
+                excel_data.append(format_row(row))
+        
+        
         excel_frame = pd.DataFrame(excel_data)
         return excel_frame
     
     def load_dc_sheet(self, sheet_name, use_cache=True, filepath=None):
         self.check_file_modifications()
         
-        # Try database first if available (currently disabled due to transformation complexity)
-        # if filepath is None and DATABASE_AVAILABLE:
-        #     try:
-        #         db_frame = self.load_cases_from_database(sheet_name)
-        #         if db_frame is not None and not db_frame.empty:
-        #             return db_frame
-        #     except Exception:
-        #         pass
+        # Try database first if available
+        if filepath is None and DATABASE_AVAILABLE:
+            try:
+                db_frame = self.load_cases_from_database(sheet_name)
+                if db_frame is not None:
+                    return db_frame
+            except Exception:
+                pass
         
         jurisdiction = "All"
         try:

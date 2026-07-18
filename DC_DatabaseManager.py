@@ -110,9 +110,11 @@ class DatabaseManager:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT * FROM disciplinary_cases 
-                WHERE sheet_origin = ? 
-                ORDER BY created_at DESC
+                SELECT d.*, e.birth_date, e.retirement_date, e.pay_group 
+                FROM disciplinary_cases d
+                LEFT JOIN employees e ON d.cpf_no = e.cpf_no
+                WHERE d.sheet_origin = ? 
+                ORDER BY d.created_at DESC
             """, (sheet_name,))
             return [dict(row) for row in cursor.fetchall()]
     

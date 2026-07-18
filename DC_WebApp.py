@@ -724,9 +724,9 @@ def create_app(loader):
         emp = editor.get_employee_by_cpf(cpf)
         if emp:
             desg = emp.get("Designation", "")
-            pg = loader.get_designation_paygrp(desg)
-            if not pg:
-                pg = "IV" # Fallback
+            raw_pg = emp.get("paygrp", "")
+            pg = loader.normalize_paygroup(raw_pg) or loader.get_designation_paygrp(desg) or "IV"
+            seniority = loader.resolve_seniority(desg, pg)
             return {
                 "success": True,
                 "employee": {
@@ -737,10 +737,10 @@ def create_app(loader):
                     "division": emp.get("presentDivision", ""),
                     "circle": emp.get("PresentCircle", ""),
                     "zone": emp.get("PresentZone", ""),
-                    "paygroup": emp.get("paygrp", "") or pg,
-                    "seniority": loader.get_designation_seniority(desg),
-                    "brthdt": str(emp.get("brthdt", "")).split(" ")[0],
-                    "dtofretir": str(emp.get("dtofretir", "")).split(" ")[0]
+                    "paygroup": pg,
+                    "seniority": seniority,
+                    "brthdt": safe_text(emp.get("brthdt", "")),
+                    "dtofretir": safe_text(emp.get("dtofretir", ""))
                 }
             }
         return {"success": False, "error": "Employee not found in master list"}
@@ -789,11 +789,12 @@ def create_app(loader):
             return render_page("initiate_case.html", message="Error: CPF not found in employee master.", status="error")
             
         desg = emp.get("Designation", "")
-        pg = emp.get("paygrp", "") or loader.get_designation_paygrp(desg) or "IV"
-        seniority = loader.get_designation_seniority(desg)
+        raw_pg = emp.get("paygrp", "")
+        pg = loader.normalize_paygroup(raw_pg) or loader.get_designation_paygrp(desg) or "IV"
+        seniority = loader.resolve_seniority(desg, pg)
         
-        dob = str(emp.get("brthdt", "")).split(" ")[0]
-        ret = str(emp.get("dtofretir", "")).split(" ")[0]
+        dob = safe_text(emp.get("brthdt", ""))
+        ret = safe_text(emp.get("dtofretir", ""))
         ret_str = f"{dob} / {ret}".strip(" /")
             
         if case_type == "minor":
@@ -987,8 +988,19 @@ def create_app(loader):
     @app.get("/refresh-data")
     @login_required
     def refresh_data():
-        loader.clear_cache()
-        return redirect(url_for('home', message="Master data cache cleared and refreshed successfully from Excel files.", status="success"))
+        try:
+            from migrate_cases import migrate_cases
+            from migrate_employees import migrate_employees
+            
+            # Run the database migration to sync with excel
+            migrate_employees()
+            migrate_cases()
+            
+            # Clear caches if any
+            loader.clear_cache()
+            return redirect(url_for('home', message="Database synced and refreshed successfully from Excel files.", status="success"))
+        except Exception as e:
+            return redirect(url_for('home', message=f"Failed to refresh data: {str(e)}", status="error"))
 
     @app.get("/search/cpf")
     def search_cpf():
@@ -1046,6 +1058,48 @@ def create_app(loader):
         try:
             info = editor.view_sheet(sheet_name)
             preview_rows = editor.get_sheet_preview(sheet_name)
+            
+            # Reorder columns so that DC No and DC Date are next to CPF No for ALL views
+            if info and preview_rows and info.get("cpf_col"):
+                cpf_col = info.get("cpf_col")
+                
+                # Identify columns to move
+                cols_to_move = []
+                if info.get("dc_col"):
+                    cols_to_move.append(info.get("dc_col"))       # Dispatch No
+                    cols_to_move.append(info.get("dc_col") + 1)   # Dispatch Date
+                if info.get("dc_record_no_col"):
+                    cols_to_move.append(info.get("dc_record_no_col"))
+                if info.get("dc_record_date_col"):
+                    cols_to_move.append(info.get("dc_record_date_col"))
+                
+                headers = info.get("headers", [])
+                
+                # Process columns in reverse order so they stack correctly after CPF
+                for move_col in reversed(cols_to_move):
+                    move_idx = move_col - 1
+                    cpf_idx = cpf_col - 1
+                    
+                    # Reorder values in preview rows
+                    for row in preview_rows:
+                        vals = row.get("values", [])
+                        if move_idx < len(vals):
+                            val = vals.pop(move_idx)
+                            vals.insert(cpf_idx + 1 if cpf_idx < move_idx else cpf_idx, val)
+                    
+                    # Reorder headers
+                    move_header = next((h for h in headers if h["column"] == move_col), None)
+                    cpf_header = next((h for h in headers if h["column"] == cpf_col), None)
+                    
+                    if move_header and cpf_header:
+                        headers.remove(move_header)
+                        cpf_h_idx = headers.index(cpf_header)
+                        headers.insert(cpf_h_idx + 1, move_header)
+                        
+                    # Adjust internal indices since we popped a column
+                    if move_idx < cpf_idx:
+                        cpf_col -= 1
+                        
         except Exception as exc:
             return render_page("sheet_view.html", message=str(exc), status="error", sheet_info=None, preview_rows=None)
         return render_page(
@@ -1128,6 +1182,17 @@ def create_app(loader):
                 
         if not payload:
             return redirect(url_for("record_detail", sheet_name=sheet_name, row_number=row_number, message="No values supplied for update.", status="error"))
+            
+        # Validation for 6DC sheet
+        if sheet_name.upper() == "6DC":
+            if not str(payload.get(10, "")).strip():
+                return redirect(url_for("record_detail", sheet_name=sheet_name, row_number=row_number, message="Fact of Case (Column 10) cannot be blank.", status="error"))
+            if not str(payload.get(11, "")).strip():
+                return redirect(url_for("record_detail", sheet_name=sheet_name, row_number=row_number, message="Dispatch No. (Column 11) cannot be blank.", status="error"))
+            if not str(payload.get(19, "")).strip():
+                return redirect(url_for("record_detail", sheet_name=sheet_name, row_number=row_number, message="DC No (Column 19) cannot be blank.", status="error"))
+            if not str(payload.get(20, "")).strip():
+                return redirect(url_for("record_detail", sheet_name=sheet_name, row_number=row_number, message="Date (Column 20) cannot be blank.", status="error"))
             
         try:
             editor.update_record(sheet_name, row_number, payload)
@@ -1955,12 +2020,12 @@ def create_app(loader):
             meta = META.get(sheet_name, {})
             cpf_index = meta.get("cpf_col", 4) - 1
             dc_index = meta.get("dc_record_no_col", 11) - 1
-            # EO Appt Details is Col 15 -> index 14
-            eo_index = 14
-            # Date of receipt of enquiry findings is Col 16 -> index 15
-            report_index = 15
-            # SCN Date is Col 17 -> index 16
-            scn_index = 16
+            # EO Appt Details is Col 13 -> index 12
+            eo_index = 12
+            # Date of receipt of enquiry findings is Col 14 -> index 13
+            report_index = 13
+            # SCN Date is Col 15 -> index 14
+            scn_index = 14
             start_row = max(meta.get("data_start", 5) - 1, 0)
             
             for idx, row in frame.iloc[start_row:].iterrows():
@@ -2043,9 +2108,9 @@ def create_app(loader):
             meta = META.get(sheet_name, {})
             cpf_index = meta.get("cpf_col", 4) - 1
             dc_index = meta.get("dc_record_no_col", 11) - 1
-            eo_index = 14
-            report_index = 15
-            scn_index = 16
+            eo_index = 12
+            report_index = 13
+            scn_index = 14
             start_row = max(meta.get("data_start", 5) - 1, 0)
             
             for idx, row in frame.iloc[start_row:].iterrows():
@@ -2174,7 +2239,24 @@ def create_app(loader):
             if not designation:
                 return f"Validation Error: Designation cannot be empty. Please wait for the auto-fetch or enter it manually."
                 
-            seniority = loader.get_designation_seniority(designation)
+            cpf_col = None
+            for key, col_idx in field_map.items():
+                if "cpfno" in key.lower() or "cpf" in key.lower():
+                    cpf_col = col_idx
+                    break
+                    
+            pg = ""
+            if cpf_col is not None and cpf_col in row_data:
+                emp = editor.get_employee_by_cpf(str(row_data[cpf_col]).strip())
+                if emp:
+                    pg = emp.get("paygrp", "")
+            
+            if not pg:
+                pg_col = field_map.get("paygroup")
+                if pg_col is not None and pg_col in row_data:
+                    pg = str(row_data[pg_col]).strip()
+                    
+            seniority = loader.resolve_seniority(designation, pg)
             
             STATE_SHEETS = ["4DC", "7DC", "12DC", "14DC", "16DC", "20DC", "22DC", "24DC", "29DC"]
             is_state_sheet = sheet_name.strip().upper() in STATE_SHEETS
