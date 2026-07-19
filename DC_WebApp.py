@@ -2588,20 +2588,41 @@ def create_app(loader):
     @app.get("/reports/unmatched-employees")
     @login_required
     def unmatched_employees():
-        from DC_DatabaseManager import db_manager
         try:
-            with db_manager.get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT d.sheet_origin, d.cpf_no, d.employee_name, d.designation, d.present_office, d.dc_number
-                    FROM disciplinary_cases d
-                    LEFT JOIN employees e ON d.cpf_no = e.cpf_no
-                    WHERE e.cpf_no IS NULL AND d.cpf_no != '' AND d.cpf_no IS NOT NULL AND d.cpf_no != '0'
-                    ORDER BY d.sheet_origin
-                """)
-                unmatched = [dict(r) for r in cursor.fetchall()]
+            emp_df = loader.load_emp(use_cache=True)
+            valid_cpfs = set(emp_df.iloc[:, 0].dropna().astype(str).str.strip().str.upper())
+            
+            unmatched = []
+            dfs = loader.load_all(use_cache=True)
+            
+            for sheet_name, df in dfs.items():
+                if df.empty:
+                    continue
+                    
+                meta = loader.get_sheet_meta(sheet_name)
+                cpf_col = meta.get("cpf_col", 4) - 1
+                dc_col = meta.get("dc_record_no_col", 11) - 1
+                name_col = meta.get("name_col", 5) - 1
+                desig_col = meta.get("designation_col", 6) - 1
+                office_col = meta.get("office_col", 7) - 1
+                
+                for idx, row in df.iterrows():
+                    cpf_val = str(row.iloc[cpf_col]).strip().upper() if cpf_col < len(row) else ""
+                    
+                    if has_cpf_value(cpf_val) and cpf_val not in valid_cpfs:
+                        unmatched.append({
+                            "sheet_origin": sheet_name,
+                            "cpf_no": cpf_val,
+                            "employee_name": safe_text(row.iloc[name_col]) if name_col < len(row) else "",
+                            "designation": safe_text(row.iloc[desig_col]) if desig_col < len(row) else "",
+                            "present_office": safe_text(row.iloc[office_col]) if office_col < len(row) else "",
+                            "dc_number": safe_text(row.iloc[dc_col]) if dc_col < len(row) else ""
+                        })
+                        
+            unmatched = sorted(unmatched, key=lambda x: x["sheet_origin"])
+            
         except Exception as e:
-            return redirect(url_for("home", message=f"Database error: {str(e)}", status="error"))
+            return redirect(url_for("home", message=f"Error generating report: {str(e)}", status="error"))
             
         return render_page("unmatched.html", unmatched=unmatched)
 
