@@ -1449,6 +1449,8 @@ def create_app(loader):
                 if initiator_circle == initiator:
                     dispatch_val = str(row.iloc[dc_col_idx]) if dc_col_idx < frame.shape[1] else ""
                     _, date_str = split_dispatch_date(safe_text(dispatch_val))
+                    facts_col_idx = meta.get("facts_col", 0) - 1
+                    fact_val = str(row.iloc[facts_col_idx]) if facts_col_idx >= 0 and facts_col_idx < frame.shape[1] else ""
                     
                     emp = editor.get_employee_by_cpf(normalize_cpf(cpf))
                     emp_name = emp.get("EmployeeName", "") if emp else ""
@@ -1467,6 +1469,9 @@ def create_app(loader):
                         "cpf": cpf,
                         "name": emp_name,
                         "designation": emp_desg,
+                        "fact_of_case": fact_val,
+                        "dc_no": dispatch_val,
+                        "dc_date": date_str,
                         "place": emp_place,
                         "dc_ref": dispatch_val,
                         "dispatch_date": date_str
@@ -1517,6 +1522,8 @@ def create_app(loader):
                 
                 dispatch_val = row.iloc[dc_col_idx] if dc_col_idx < frame.shape[1] else ""
                 _, date_str = split_dispatch_date(safe_text(dispatch_val))
+                facts_col_idx = meta.get("facts_col", 0) - 1
+                fact_val = str(row.iloc[facts_col_idx]) if facts_col_idx >= 0 and facts_col_idx < frame.shape[1] else ""
                 dt = parse_case_date(date_str)
                 
                 if dt:
@@ -1543,6 +1550,9 @@ def create_app(loader):
                             "cpf": cpf,
                             "name": emp_name,
                             "designation": emp_desg,
+                            "fact_of_case": fact_val,
+                            "dc_no": dispatch_val,
+                            "dc_date": date_str,
                             "place": emp_place,
                             "dc_ref": dispatch_val,
                             "dispatch_date": date_str
@@ -1667,6 +1677,8 @@ def create_app(loader):
                 
                 dispatch_val = row.iloc[dc_col_idx] if dc_col_idx < frame.shape[1] else ""
                 _, date_str = split_dispatch_date(safe_text(dispatch_val))
+                facts_col_idx = meta.get("facts_col", 0) - 1
+                fact_val = str(row.iloc[facts_col_idx]) if facts_col_idx >= 0 and facts_col_idx < frame.shape[1] else ""
                 dt = parse_case_date(date_str)
                 
                 category = "unknown_date"
@@ -1695,6 +1707,9 @@ def create_app(loader):
                         "cpf": cpf_raw,
                         "name": emp_name,
                         "designation": "",
+                        "fact_of_case": fact_val,
+                        "dc_no": dispatch_val,
+                        "dc_date": date_str,
                         "place": "",
                         "dc_ref": dispatch_val,
                         "dispatch_date": date_str
@@ -2175,7 +2190,7 @@ def create_app(loader):
                 continue
             meta = META.get(sheet_name, {})
             cpf_index = meta.get("cpf_col", 4) - 1
-            dc_index = meta.get("dc_record_no_col", 11) - 1
+            dc_index = meta.get("dc_col", 10) - 1
             # EO Appt Details is Col 13 -> index 12
             eo_index = 12
             # Date of receipt of enquiry findings is Col 14 -> index 13
@@ -2190,7 +2205,8 @@ def create_app(loader):
                     continue
                 
                 cpf = row_values[cpf_index] if cpf_index < len(row_values) else ""
-                dc_no = row_values[dc_index] if dc_index < len(row_values) else ""
+                dispatch_val = row_values[dc_index] if dc_index < len(row_values) else ""
+                dc_no_val, dc_date_val = split_dispatch_date(safe_text(dispatch_val))
                 name_designation = row_values[1] if 1 < len(row_values) else "" # Col 2
                 
                 eo_detail = str(row_values[eo_index]).strip() if eo_index < len(row_values) else ""
@@ -2205,7 +2221,8 @@ def create_app(loader):
                     "row_number": int(idx) + 1,
                     "cpf": cpf,
                     "name": name_designation,
-                    "dc_no": dc_no,
+                    "dc_no": dc_no_val,
+                    "dc_date": dc_date_val,
                     "eo_detail": eo_detail,
                     "report_detail": report_detail,
                     "report_received": report_received,
@@ -2263,7 +2280,7 @@ def create_app(loader):
                 continue
             meta = META.get(sheet_name, {})
             cpf_index = meta.get("cpf_col", 4) - 1
-            dc_index = meta.get("dc_record_no_col", 11) - 1
+            dc_index = meta.get("dc_col", 10) - 1
             eo_index = 12
             report_index = 13
             scn_index = 14
@@ -2275,7 +2292,8 @@ def create_app(loader):
                     continue
                 
                 cpf = row_values[cpf_index] if cpf_index < len(row_values) else ""
-                dc_no = row_values[dc_index] if dc_index < len(row_values) else ""
+                dispatch_val = row_values[dc_index] if dc_index < len(row_values) else ""
+                dc_no_val, dc_date_val = split_dispatch_date(safe_text(dispatch_val))
                 name_designation = row_values[1] if 1 < len(row_values) else ""
                 eo_detail = str(row_values[eo_index]).strip() if eo_index < len(row_values) else ""
                 report_detail = str(row_values[report_index]).strip() if report_index < len(row_values) else ""
@@ -2289,7 +2307,12 @@ def create_app(loader):
                 else:
                     status = "Not Appointed"
                 
-                cw.writerow([status, "Major DC", sheet_name, int(idx) + 1, cpf, name_designation, dc_no, eo_detail, "Received" if report_received else "Pending", report_detail, "Issued" if scn_issued else "Not Issued", scn_detail])
+                cw.writerow([
+                    status, "Major", sheet_name, int(idx) + 1, cpf, name_designation, 
+                    f"{dc_no_val} dt {dc_date_val}", eo_detail, 
+                    "Received" if report_received else "Pending", report_detail,
+                    "Issued" if scn_issued else "Pending", scn_detail
+                ])
                 
         output = si.getvalue()
         return Response(
@@ -2629,7 +2652,8 @@ def create_app(loader):
 
 def run_server(loader, host="0.0.0.0", port=5000, open_browser=True):
     app = create_app(loader)
-    url = f"http://{host}:{port}/login"
+    display_host = "127.0.0.1" if host == "0.0.0.0" else host
+    url = f"http://{display_host}:{port}/login"
     if open_browser:
         try:
             webbrowser.open(url)

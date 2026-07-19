@@ -79,7 +79,8 @@
                         <th style="width: 80px;">Sheet</th>
                         <th style="width: 100px;">CPF No</th>
                         <th>Name & Designation</th>
-                        <th>DC Number</th>
+                        <th>DC No</th>
+                        <th>DC Date</th>
                         <th>EO Appointment Details</th>
                         <th>SCN Status</th>
                         <th style="width: 80px;">Actions</th>
@@ -91,7 +92,8 @@
                         <td><span class="badge b-major">{{ case.sheet }}</span></td>
                         <td>{{ case.cpf }}</td>
                         <td>{{ case.name }}</td>
-                        <td>{{ case.dc_no }}</td>
+                        <td><strong>{{ case.dc_no }}</strong></td>
+                        <td><small>{{ case.dc_date }}</small></td>
                         <td>{{ case.eo_detail }}</td>
                         <td>
                             {% if case.scn_issued %}
@@ -125,7 +127,8 @@
                         <th style="width: 80px;">Sheet</th>
                         <th style="width: 100px;">CPF No</th>
                         <th>Name & Designation</th>
-                        <th>DC Number</th>
+                        <th>DC No</th>
+                        <th>DC Date</th>
                         <th>EO Appointment Details</th>
                         <th>Report Details</th>
                         <th>SCN Status</th>
@@ -138,7 +141,8 @@
                         <td><span class="badge b-major">{{ case.sheet }}</span></td>
                         <td>{{ case.cpf }}</td>
                         <td>{{ case.name }}</td>
-                        <td>{{ case.dc_no }}</td>
+                        <td><strong>{{ case.dc_no }}</strong></td>
+                        <td><small>{{ case.dc_date }}</small></td>
                         <td>{{ case.eo_detail }}</td>
                         <td>
                             <span class="badge" style="background: #e8f5e9; color: #2e7d32;">Received: {{ case.report_detail }}</span>
@@ -171,7 +175,8 @@
                         <th style="width: 80px;">Sheet</th>
                         <th style="width: 100px;">CPF No</th>
                         <th>Name & Designation</th>
-                        <th>DC Number</th>
+                        <th>DC No</th>
+                        <th>DC Date</th>
                         <th>EO Appointment Details</th>
                         <th>Report Details</th>
                         <th>SCN Status</th>
@@ -184,7 +189,8 @@
                         <td><span class="badge b-major">{{ case.sheet }}</span></td>
                         <td>{{ case.cpf }}</td>
                         <td>{{ case.name }}</td>
-                        <td>{{ case.dc_no }}</td>
+                        <td><strong>{{ case.dc_no }}</strong></td>
+                        <td><small>{{ case.dc_date }}</small></td>
                         <td>{{ case.eo_detail }}</td>
                         <td>
                             <span class="badge" style="background: #e8f5e9; color: #2e7d32;">Received: {{ case.report_detail }}</span>
@@ -217,7 +223,8 @@
                         <th style="width: 80px;">Sheet</th>
                         <th style="width: 100px;">CPF No</th>
                         <th>Name & Designation</th>
-                        <th>DC Number</th>
+                        <th>DC No</th>
+                        <th>DC Date</th>
                         <th>Remarks / Details</th>
                         <th>SCN Status</th>
                         <th style="width: 80px;">Actions</th>
@@ -229,7 +236,8 @@
                         <td><span class="badge b-major">{{ case.sheet }}</span></td>
                         <td>{{ case.cpf }}</td>
                         <td>{{ case.name }}</td>
-                        <td>{{ case.dc_no }}</td>
+                        <td><strong>{{ case.dc_no }}</strong></td>
+                        <td><small>{{ case.dc_date }}</small></td>
                         <td><span style="color: #e74c3c; font-style: italic;">Not Appointed</span></td>
                         <td>
                             {% if case.scn_issued %}

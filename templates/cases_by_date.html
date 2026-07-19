@@ -22,8 +22,9 @@
                     <th width="100">CPF No</th>
                     <th>Employee Name</th>
                     <th>Designation</th>
-                    <th>Working Place</th>
-                    <th>Case Reference</th>
+                    <th>Fact of Case</th>
+                    <th>DC No</th>
+                    <th>DC Date</th>
                     <th width="100">Actions</th>
                 </tr>
             </thead>
@@ -35,8 +36,9 @@
                     <td><code>{{ item.cpf }}</code></td>
                     <td>{{ item.name }}</td>
                     <td><small>{{ item.designation }}</small></td>
-                    <td><small>{{ item.place }}</small></td>
-                    <td><span style="font-size: 11px;">{{ item.dc_ref }}</span></td>
+                    <td><small>{{ item.fact_of_case }}</small></td>
+                    <td><strong>{{ item.dc_no }}</strong></td>
+                    <td><small>{{ item.dc_date }}</small></td>
                     <td>
                         <a href="/record/{{ item.sheet }}/{{ item.row_number }}" class="btn btn-secondary btn-sm">{% if is_admin %}✏️ Edit{% else %}👁️ View{% endif %}</a>
                     </td>

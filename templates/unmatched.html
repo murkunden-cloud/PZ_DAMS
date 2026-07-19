@@ -18,8 +18,9 @@
                         <th width="120">CPF No</th>
                         <th>Employee Name</th>
                         <th>Designation</th>
-                        <th>Working Place</th>
-                        <th>Case Reference</th>
+                        <th>Fact of Case</th>
+                        <th>DC No</th>
+                        <th>DC Date</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -29,8 +30,9 @@
                         <td data-label="CPF No" style="color: #e74c3c; font-weight: bold;">{{ item.cpf_no }}</td>
                         <td data-label="Employee Name">{{ item.employee_name }}</td>
                         <td data-label="Designation"><small>{{ item.designation }}</small></td>
-                        <td data-label="Working Place"><small>{{ item.present_office }}</small></td>
-                        <td data-label="Case Reference"><span style="font-size: 11px;">{{ item.dc_number }}</span></td>
+                        <td data-label="Fact of Case"><small>{{ item.facts_of_case }}</small></td>
+                        <td data-label="DC No"><strong>{{ item.dc_number }}</strong></td>
+                        <td data-label="DC Date"><small>{{ item.dc_date }}</small></td>
                     </tr>
                     {% endfor %}
                 </tbody>

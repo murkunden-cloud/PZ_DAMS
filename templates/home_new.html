@@ -12,8 +12,9 @@
                 <th width="100">CPF No</th>
                 <th>Employee Name</th>
                 <th>Designation</th>
-                <th>Working Place</th>
-                <th>Case Reference</th>
+                <th>Fact of Case</th>
+                <th>DC No</th>
+                <th>DC Date</th>
                 <th width="180">Actions</th>
             </tr>
         </thead>
@@ -24,8 +25,9 @@
                 <td data-label="CPF No"><code>{{ item.cpf }}</code></td>
                 <td data-label="Employee Name">{{ item.name }}</td>
                 <td data-label="Designation"><small>{{ item.designation }}</small></td>
-                <td data-label="Working Place"><small>{{ item.place }}</small></td>
-                <td data-label="Case Reference"><span style="font-size: 11px;">{{ item.dc_ref }}</span></td>
+                <td data-label="Fact of Case"><small>{{ item.fact_of_case }}</small></td>
+                <td data-label="DC No"><strong>{{ item.dc_no }}</strong></td>
+                <td data-label="DC Date"><small>{{ item.dc_date }}</small></td>
                 <td data-label="Actions">
                     <div style="display:flex; gap: 5px;">
                         <a href="/record/{{ sheet_name }}/{{ item.row_number }}" class="btn btn-secondary btn-sm">{% if is_admin %}✏️ Edit{% else %}👁️ View{% endif %}</a>
@@ -50,8 +52,9 @@
                 <th width="100">CPF No</th>
                 <th>Employee Name</th>
                 <th>Designation</th>
-                <th>Working Place</th>
-                <th>Case Reference</th>
+                <th>Fact of Case</th>
+                <th>DC No</th>
+                <th>DC Date</th>
                 <th width="200">Actions</th>
             </tr>
         </thead>
@@ -62,8 +65,9 @@
                 <td data-label="CPF No"><code>{{ item.cpf }}</code></td>
                 <td data-label="Employee Name">{{ item.name }}</td>
                 <td data-label="Designation"><small>{{ item.designation }}</small></td>
-                <td data-label="Working Place"><small>{{ item.place }}</small></td>
-                <td data-label="Case Reference"><span style="font-size: 11px;">{{ item.dc_ref }}</span></td>
+                <td data-label="Fact of Case"><small>{{ item.fact_of_case }}</small></td>
+                <td data-label="DC No"><strong>{{ item.dc_no }}</strong></td>
+                <td data-label="DC Date"><small>{{ item.dc_date }}</small></td>
                 <td data-label="Actions">
                     <div style="display:flex; gap: 5px;">
                         <form action="/case/consolidate/{{ sheet_name }}/{{ item.row_number }}" method="post" onsubmit="return confirm('Send this initiated case to the ongoing sheets?')" style="margin:0;">
@@ -88,8 +92,9 @@
                 <th width="100">CPF No</th>
                 <th>Employee Name</th>
                 <th>Designation</th>
-                <th>Working Place</th>
-                <th>Case Reference</th>
+                <th>Fact of Case</th>
+                <th>DC No</th>
+                <th>DC Date</th>
                 <th width="100">Actions</th>
             </tr>
         </thead>
@@ -100,8 +105,9 @@
                 <td data-label="CPF No"><code>{{ item.cpf }}</code></td>
                 <td data-label="Employee Name">{{ item.name }}</td>
                 <td data-label="Designation"><small>{{ item.designation }}</small></td>
-                <td data-label="Working Place"><small>{{ item.place }}</small></td>
-                <td data-label="Case Reference"><span style="font-size: 11px;">{{ item.dc_ref }}</span></td>
+                <td data-label="Fact of Case"><small>{{ item.fact_of_case }}</small></td>
+                <td data-label="DC No"><strong>{{ item.dc_no }}</strong></td>
+                <td data-label="DC Date"><small>{{ item.dc_date }}</small></td>
                 <td data-label="Actions">
                     <a href="/record/{{ sheet_name }}/{{ item.row_number }}" class="btn btn-secondary btn-sm">👁️ View</a>
                 </td>
