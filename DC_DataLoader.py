@@ -102,6 +102,7 @@ OP_SHEETS = [sheet for sheet, meta in META.items() if meta.get("type") != "abstr
 ACTIVE_CASE_SHEETS = {
     "minor": ["6DC"],
     "major": ["22DC", "23DC"],
+    "suspension": ["12DC", "13DC"],
 }
 
 DISPLAY_BADGES = {
@@ -154,7 +155,7 @@ def normalize_cpf(value):
 def has_cpf_value(value):
     raw = str(value).strip().lower() if value is not None else ""
     norm = normalize_cpf(value)
-    return bool(norm) and norm.isdigit()
+    return bool(norm) and norm.isdigit() and len(norm) >= 4
 
 
 def extract_dc(text):
@@ -214,55 +215,10 @@ class DCDataLoader:
         self._last_emp_mtime = 0
 
     def check_file_modifications(self):
-        dc_mtime = os.path.getmtime(self.dc_file) if os.path.exists(self.dc_file) else 0
-        emp_mtime = os.path.getmtime(self.emp_file) if os.path.exists(self.emp_file) else 0
-        dc_size = os.path.getsize(self.dc_file) if os.path.exists(self.dc_file) else 0
-        emp_size = os.path.getsize(self.emp_file) if os.path.exists(self.emp_file) else 0
-        
-        meta_file = os.path.join(self.cache_dir, "cache_meta.json")
-        stored_dc_mtime = 0
-        stored_dc_size = 0
-        stored_emp_mtime = 0
-        stored_emp_size = 0
-        
-        if os.path.exists(meta_file):
-            try:
-                import json
-                with open(meta_file, 'r') as f:
-                    meta = json.load(f)
-                    stored_dc_mtime = meta.get("dc_mtime", 0)
-                    stored_dc_size = meta.get("dc_size", 0)
-                    stored_emp_mtime = meta.get("emp_mtime", 0)
-                    stored_emp_size = meta.get("emp_size", 0)
-            except Exception:
-                pass
-
-        changed = False
-        if dc_mtime != stored_dc_mtime or dc_size != stored_dc_size or emp_mtime != stored_emp_mtime or emp_size != stored_emp_size:
-            changed = True
-            
-        if (self._last_dc_mtime != 0 and dc_mtime != self._last_dc_mtime) or \
-           (self._last_emp_mtime != 0 and emp_mtime != self._last_emp_mtime):
-            changed = True
-
-        if changed:
-            self.clear_cache()
-            self._last_dc_mtime = dc_mtime
-            self._last_emp_mtime = emp_mtime
-            try:
-                import json
-                with open(meta_file, 'w') as f:
-                    json.dump({
-                        "dc_mtime": dc_mtime,
-                        "dc_size": dc_size,
-                        "emp_mtime": emp_mtime,
-                        "emp_size": emp_size
-                    }, f)
-            except Exception:
-                pass
-        elif self._last_dc_mtime == 0 or self._last_emp_mtime == 0:
-            self._last_dc_mtime = dc_mtime
-            self._last_emp_mtime = emp_mtime
+        # User requested to no longer depend on continuous monitoring of master excel files
+        # The program will now strictly rely on the database and internal cache.
+        # Updates will only happen when the user forcefully clicks "Force Update Data".
+        pass
 
     def clear_cache(self):
         self._emp_cache = None
@@ -530,15 +486,6 @@ class DCDataLoader:
     
     def load_dc_sheet(self, sheet_name, use_cache=True, filepath=None):
         self.check_file_modifications()
-        
-        # Try database first if available
-        if filepath is None and DATABASE_AVAILABLE:
-            try:
-                db_frame = self.load_cases_from_database(sheet_name)
-                if db_frame is not None:
-                    return db_frame
-            except Exception:
-                pass
         
         jurisdiction = "All"
         try:

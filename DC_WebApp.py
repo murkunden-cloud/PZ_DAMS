@@ -23,7 +23,7 @@ except ImportError as exc:
     raise RuntimeError("flask and werkzeug are required. Install them with: pip install flask werkzeug") from exc
 
 from DC_Dashboard import DCDashboard
-from DC_DataLoader import META, has_cpf_value, normalize_cpf, row_to_strings, RUNTIME_DIR, safe_text, DC_FILE
+from DC_DataLoader import META, has_cpf_value, normalize_cpf, row_to_strings, RUNTIME_DIR, safe_text, DC_FILE, ACTIVE_CASE_SHEETS
 from DC_Editor import DCEditor, split_dispatch_date
 from DC_PendencyEngine import DCPendencyEngine, parse_case_date
 from DC_Reports import DCReports
@@ -624,7 +624,12 @@ def create_app(loader):
             return f(*args, **kwargs)
         return decorated_function
 
-    def render_page(template_name, message="", status="info", **extra):
+    def render_page(template_name, message=None, status=None, **extra):
+        if message is None:
+            message = request.args.get("message", "")
+        if status is None:
+            status = request.args.get("status", "info")
+            
         context = build_common_context(loader, editor, dashboard)
         context.update(extra)
         context["message"] = message
@@ -1199,7 +1204,7 @@ def create_app(loader):
         except Exception as exc:
             return redirect(url_for("record_detail", sheet_name=sheet_name, row_number=row_number, message=str(exc), status="error"))
             
-        return redirect(url_for("record_detail", sheet_name=sheet_name, row_number=row_number, message="Record updated successfully in Excel.", status="success"))
+        return redirect(url_for("record_detail", sheet_name=sheet_name, row_number=row_number, message="Record updated successfully.", status="success"))
 
     @app.post("/record/<sheet_name>/<int:row_number>/delete")
     @admin_required
@@ -1255,10 +1260,20 @@ def create_app(loader):
     @app.get("/reports/agewise")
     @login_required
     def reports_agewise():
+        category = request.args.get("category", "all")
         all_dc = loader.load_sheets(loader.op_sheets, use_cache=True)
         employees = loader.load_emp()
-        summary = pendency_engine.build_agewise_org_summary(all_dc, employees)
-        return render_page("agewise_summary.html", summary=summary)
+        summary = pendency_engine.build_agewise_org_summary(all_dc, employees, category_filter=category)
+        return render_page("agewise_summary.html", summary=summary, active_category=category)
+
+    @app.get("/reports/paygroup-monthwise")
+    @login_required
+    def reports_paygroup_monthwise():
+        category = request.args.get("category", "all")
+        all_dc = loader.load_sheets(loader.op_sheets, use_cache=True)
+        employees = loader.load_emp()
+        summary = pendency_engine.build_paygroup_month_summary(all_dc, employees, category_filter=category)
+        return render_page("paygroup_summary.html", summary=summary, active_category=category)
 
     @app.get("/export/agewise-excel")
     @login_required
@@ -1288,7 +1303,7 @@ def create_app(loader):
             bottom=Side(style='thin', color='D9D9D9')
         )
         
-        for name, data_list in [("Circle-wise Summary", summary["circle"]), ("Division-wise Summary", summary["division"])]:
+        for name, data_list in [("Initiator Office Summary", summary["circle"]), ("Paygroup Summary", summary["paygroup"])]:
             ws = wb.create_sheet(title=name)
             ws.views.sheetView[0].showGridLines = True
             
@@ -1368,6 +1383,103 @@ def create_app(loader):
         temp_path = os.path.join(loader.cache_dir, f"{month_name}_35DC_agewise_{timestamp}.xlsx")
         wb.save(temp_path)
         return send_file(temp_path, as_attachment=True, download_name=f"{month_name}_35DC_agewise_{timestamp}.xlsx")
+
+    @app.get("/cases/initiator")
+    @login_required
+    def cases_by_initiator():
+        initiator = request.args.get("initiator", "")
+        category = request.args.get("category", "")
+        
+        if not initiator or not category:
+            return redirect(url_for("home", message="Missing parameters.", status="error"))
+            
+        all_dc = loader.load_sheets(loader.op_sheets, use_cache=True)
+        active_sheets = ACTIVE_CASE_SHEETS.get(category, [])
+        if not active_sheets:
+            return redirect(url_for("home", message="Invalid category.", status="error"))
+            
+        matched_cases = []
+        
+        for sheet_name in active_sheets:
+            frame = all_dc.get(sheet_name)
+            if frame is None or frame.empty:
+                continue
+            meta = META.get(sheet_name, {})
+            cpf_col_idx = meta.get("cpf_col", 3) - 1
+            dc_col_idx = meta.get("dc_col", 10) - 1
+            start_row = max(meta.get("data_start", 4) - 1, 0)
+            
+            headers = editor.get_column_labels(sheet_name)
+            
+            for idx, row in frame.iloc[start_row:].iterrows():
+                cpf = row.iloc[cpf_col_idx] if cpf_col_idx < frame.shape[1] else ""
+                if not has_cpf_value(cpf):
+                    continue
+                
+                initiator_circle = "N.A."
+                for val in reversed(row.tolist()):
+                    text = str(val).upper().strip()
+                    if not text: continue
+                    if 'RPUC' in text or 'RASTAPETH' in text or 'RASTA PETH' in text:
+                        initiator_circle = "Rastapeth Urban Circle"
+                        break
+                    elif 'GKUC' in text or 'GANESHKHIND' in text:
+                        initiator_circle = "Ganeshkhind Urban Circle"
+                        break
+                    elif 'PRC' in text or 'PUNE RURAL' in text:
+                        initiator_circle = "Pune Rural Circle"
+                        break
+                    elif 'PZ' in text or 'PUNE ZONE' in text:
+                        initiator_circle = "Pune Zone"
+                        break
+                
+                if initiator_circle == "N.A.":
+                    dispatch_val = str(row.iloc[dc_col_idx]).upper() if dc_col_idx < frame.shape[1] else ""
+                    if 'RPUC' in dispatch_val or 'RASTAPETH' in dispatch_val or 'RASTA PETH' in dispatch_val:
+                        initiator_circle = "Rastapeth Urban Circle"
+                    elif 'GKUC' in dispatch_val or 'GANESHKHIND' in dispatch_val:
+                        initiator_circle = "Ganeshkhind Urban Circle"
+                    elif 'PRC' in dispatch_val or 'PUNE RURAL' in dispatch_val:
+                        initiator_circle = "Pune Rural Circle"
+                    elif 'PZ' in dispatch_val or 'PUNE ZONE' in dispatch_val:
+                        initiator_circle = "Pune Zone"
+                    else:
+                        initiator_circle = "Other / Unknown Initiator"
+                        
+                if initiator_circle == initiator:
+                    dispatch_val = str(row.iloc[dc_col_idx]) if dc_col_idx < frame.shape[1] else ""
+                    _, date_str = split_dispatch_date(safe_text(dispatch_val))
+                    
+                    emp = editor.get_employee_by_cpf(normalize_cpf(cpf))
+                    emp_name = emp.get("EmployeeName", "") if emp else ""
+                    emp_desg = emp.get("Designation", "") if emp else ""
+                    emp_place = emp.get("PresentOffice", "") if emp else ""
+                    
+                    if not emp_name:
+                        name_col_idx = meta.get("name_col", 2) - 1
+                        row_values = row_to_strings(list(row.iloc[: min(frame.shape[1], 20)]))
+                        if name_col_idx < len(row_values):
+                            emp_name = row_values[name_col_idx]
+                            
+                    matched_cases.append({
+                        "sheet": sheet_name,
+                        "row_number": int(idx) + 1,
+                        "cpf": cpf,
+                        "name": emp_name,
+                        "designation": emp_desg,
+                        "place": emp_place,
+                        "dc_ref": dispatch_val,
+                        "dispatch_date": date_str
+                    })
+                    
+        matched_cases.sort(key=lambda x: (x["sheet"], x["row_number"]))
+        
+        title = f"{category.title()} Cases for {initiator}"
+        
+        return render_page("cases_by_date.html", 
+                           cases=matched_cases, 
+                           title=title, 
+                           group_type="initiator")
 
     @app.get("/cases/date")
     @login_required
@@ -1453,9 +1565,13 @@ def create_app(loader):
         org_kind = request.args.get("org_kind", "")
         org_value = request.args.get("org_value", "")
         age_group = request.args.get("age_group", "")
+        category = request.args.get("category", "all")
         
         all_dc = loader.load_sheets(loader.op_sheets, use_cache=True)
-        active_sheets = ["6DC", "22DC", "23DC"]
+        if category == "all":
+            active_sheets = ACTIVE_CASE_SHEETS.get("minor", []) + ACTIVE_CASE_SHEETS.get("major", [])
+        else:
+            active_sheets = ACTIVE_CASE_SHEETS.get(category, [])
         
         employees = loader.load_emp()
         employee_lookup = {}
@@ -1466,6 +1582,8 @@ def create_app(loader):
                     "circle": safe_text(row.get("PresentCircle")) or "Unknown",
                     "division": safe_text(row.get("presentDivision")) or "Unknown",
                     "office": safe_text(row.get("PresentOffice")) or "Unknown",
+                    "PayGroup": row.get("PayGroup", row.get("paygrp", "Unknown")),
+                    "EmployeeName": row.get("EmployeeName", ""),
                 }
                 
         matched_cases = []
@@ -1487,26 +1605,64 @@ def create_app(loader):
                 cpf = normalize_cpf(cpf_raw)
                 if not has_cpf_value(cpf):
                     continue
+                    
+                org = employee_lookup.get(cpf, {})
                 
-                org = employee_lookup.get(cpf, {"zone": "Unknown", "circle": "Unknown", "division": "Unknown", "office": "Unknown"})
+                initiator_circle = "N.A."
+                for val in reversed(row.tolist()):
+                    text = str(val).upper().strip()
+                    if not text: continue
+                    if 'RPUC' in text or 'RASTAPETH' in text or 'RASTA PETH' in text:
+                        initiator_circle = "Rastapeth Urban Circle"
+                        break
+                    elif 'GKUC' in text or 'GANESHKHIND' in text:
+                        initiator_circle = "Ganeshkhind Urban Circle"
+                        break
+                    elif 'PRC' in text or 'PUNE RURAL' in text:
+                        initiator_circle = "Pune Rural Circle"
+                        break
+                    elif 'PZ' in text or 'PUNE ZONE' in text:
+                        initiator_circle = "Pune Zone"
+                        break
                 
-                dispatch_val = row.iloc[dc_col_idx] if dc_col_idx < frame.shape[1] else ""
-                is_zone_case = str(dispatch_val).strip().upper().startswith("CE/PZ")
-                
-                if is_zone_case:
-                    zone_name = org.get("zone") or "Pune Zone"
-                    pseudo = f"{zone_name} Office"
-                    org = org.copy()
-                    org["circle"] = pseudo
-                    org["division"] = pseudo
-                    org["office"] = pseudo
-                if org_kind == "zone" and org.get("zone") != org_value:
+                if initiator_circle == "N.A.":
+                    dispatch_val = str(row.iloc[dc_col_idx]).upper() if dc_col_idx < frame.shape[1] else ""
+                    if 'RPUC' in dispatch_val or 'RASTAPETH' in dispatch_val or 'RASTA PETH' in dispatch_val:
+                        initiator_circle = "Rastapeth Urban Circle"
+                    elif 'GKUC' in dispatch_val or 'GANESHKHIND' in dispatch_val:
+                        initiator_circle = "Ganeshkhind Urban Circle"
+                    elif 'PRC' in dispatch_val or 'PUNE RURAL' in dispatch_val:
+                        initiator_circle = "Pune Rural Circle"
+                    elif 'PZ' in dispatch_val or 'PUNE ZONE' in dispatch_val:
+                        initiator_circle = "Pune Zone"
+                    else:
+                        initiator_circle = "Other / Unknown Initiator"
+                        
+                pg_raw = org.get("PayGroup", org.get("paygrp", "Unknown"))
+                if not pg_raw or pg_raw == "Unknown":
+                    if frame.shape[1] > 4:
+                        fallback_pg = str(row.iloc[4]).strip()
+                        if fallback_pg and fallback_pg.lower() not in ("nan", "none", "unknown"):
+                            pg_raw = fallback_pg
+
+                if pg_raw in ("1", 1.0, "I", "1.0", 1): pg = "Pay Group I"
+                elif pg_raw in ("2", 2.0, "II", "2.0", 2): pg = "Pay Group II"
+                elif pg_raw in ("3", 3.0, "III", "3.0", 3): 
+                    is_state = False
+                    if sheet_name in ("22DC", "12DC", "4DC"):
+                        is_state = True
+                    elif sheet_name not in ("23DC", "13DC", "5DC"):
+                        if frame.shape[1] > 4:
+                            col4 = str(row.iloc[4]).upper().strip()
+                            if "-S" in col4 or "STATE" in col4:
+                                is_state = True
+                    pg = "Pay Group III (State)" if is_state else "Pay Group III (Circle)"
+                elif pg_raw in ("4", 4.0, "IV", "4.0", 4): pg = "Pay Group IV"
+                else: pg = "Unknown"
+
+                if org_kind == "circle" and initiator_circle != org_value:
                     continue
-                if org_kind == "circle" and org.get("circle") != org_value:
-                    continue
-                if org_kind == "division" and org.get("division") != org_value:
-                    continue
-                if org_kind == "office" and org.get("office") != org_value:
+                if org_kind == "paygroup" and pg != org_value:
                     continue
                 
                 dispatch_val = row.iloc[dc_col_idx] if dc_col_idx < frame.shape[1] else ""
@@ -2405,6 +2561,69 @@ def create_app(loader):
             return send_file(temp_path, as_attachment=True, download_name=file_name)
         except Exception as e:
             return redirect(url_for("home", message=f"Export failed: {str(e)}", status="error"))
+
+    @app.get("/reports/unmatched-employees")
+    @login_required
+    def unmatched_employees():
+        from DC_DatabaseManager import db_manager
+        try:
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT d.sheet_origin, d.cpf_no, d.employee_name, d.designation, d.present_office, d.dc_number
+                    FROM disciplinary_cases d
+                    LEFT JOIN employees e ON d.cpf_no = e.cpf_no
+                    WHERE e.cpf_no IS NULL AND d.cpf_no != '' AND d.cpf_no IS NOT NULL AND d.cpf_no != '0'
+                    ORDER BY d.sheet_origin
+                """)
+                unmatched = [dict(r) for r in cursor.fetchall()]
+        except Exception as e:
+            return redirect(url_for("home", message=f"Database error: {str(e)}", status="error"))
+            
+        return render_page("unmatched.html", unmatched=unmatched)
+
+    @app.get("/export_changes")
+    @login_required
+    def export_changes():
+        try:
+            from export_utils import generate_highlighted_export
+            from DC_DataLoader import APP_DIR
+            
+            temp_path = generate_highlighted_export(loader.dc_file, APP_DIR)
+            filename = os.path.basename(temp_path)
+            
+            return send_file(temp_path, as_attachment=True, download_name=filename)
+        except Exception as e:
+            return redirect(url_for("home", message=f"Export Changes failed: {str(e)}", status="error"))
+
+    @app.get("/api/clear_audit_log")
+    @login_required
+    def api_clear_audit_log():
+        try:
+            from export_utils import clear_audit_log
+            from DC_DataLoader import APP_DIR
+            clear_audit_log(APP_DIR)
+            return redirect(url_for("home", message="Audit Log cleared successfully!", status="success"))
+        except Exception as e:
+            return redirect(url_for("home", message=f"Failed to clear log: {str(e)}", status="error"))
+
+    @app.get("/api/clear_cache")
+    def api_clear_cache():
+        try:
+            loader.clear_cache()
+            ref = request.referrer
+            if ref:
+                from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+                parsed = urlparse(ref)
+                query_params = parse_qs(parsed.query)
+                query_params['message'] = ['Data successfully updated!']
+                query_params['status'] = ['success']
+                new_query = urlencode(query_params, doseq=True)
+                ref = urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, new_query, parsed.fragment))
+                return redirect(ref)
+            return redirect(url_for("home", message="Data successfully updated!", status="success"))
+        except Exception as e:
+            return redirect(url_for("home", message=f"Update failed: {str(e)}", status="error"))
 
     return app
 

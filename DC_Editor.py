@@ -136,6 +136,19 @@ class DCEditor:
                 self.loader.clear_sheet_cache(sheet)
         else:
             self.loader.clear_cache()
+            
+        try:
+            import threading
+            def sync_db():
+                try:
+                    from migrate_cases import migrate_cases
+                    migrate_cases()
+                    self.loader.clear_cache()
+                except Exception as e:
+                    print(f"Background DB sync failed: {e}")
+            threading.Thread(target=sync_db, daemon=True).start()
+        except Exception:
+            pass
 
     def archive_closed_cases(self, auto_delete=True):
         self.backups.backup(reason="archive_closed_cases_pre")
@@ -530,10 +543,13 @@ class DCEditor:
             else:
                 worksheet.cell(next_row, 1, 1)
 
+            from export_utils import log_edit
+            from DC_DataLoader import APP_DIR
             for col, value in record.items():
                 if int(col) == 1:
                     continue  # skip manual Sr. No overwrite
                 worksheet.cell(next_row, int(col), value)
+                log_edit(APP_DIR, sheet_name, next_row, int(col))
             
             dc_col = meta.get("dc_col")
             if dc_col and record.get(dc_col):
@@ -567,8 +583,11 @@ class DCEditor:
                 raise KeyError(f"Sheet '{sheet_name}' not found")
             worksheet = workbook[actual_sheet]
             meta = self.loader.get_sheet_meta(sheet_name)
+            from export_utils import log_edit
+            from DC_DataLoader import APP_DIR
             for col, value in record.items():
                 worksheet.cell(int(row_number), int(col), value)
+                log_edit(APP_DIR, sheet_name, int(row_number), int(col))
             dc_col = meta.get("dc_col")
             if dc_col and record.get(dc_col):
                 worksheet.cell(int(row_number), self.get_extract_column(worksheet), extract_dc(record[dc_col]))
@@ -638,11 +657,14 @@ class DCEditor:
                 if src_col <= len(row_vals):
                     vals_map[key] = row_vals[src_col - 1]
                     
+            from export_utils import log_row_added
+            from DC_DataLoader import APP_DIR
             for key, tgt_col in tgt_fields.items():
                 val = vals_map.get(key)
                 if val is not None:
                     tgt_ws.cell(next_row, tgt_col, val)
                     
+            log_row_added(APP_DIR, target_sheet, next_row, max_cols=tgt_ws.max_column)
             self.save_wb(workbook, modified_sheets=[target_sheet])
             return next_row
         finally:

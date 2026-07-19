@@ -79,7 +79,7 @@
 
 {% macro render_count(org_kind, org_name, age_group, count) %}
     {% if count > 0 %}
-        <a href="/cases/agewise?org_kind={{ org_kind }}&org_value={{ org_name|urlencode }}&age_group={{ age_group }}" class="count-link">{{ count }}</a>
+        <a href="/cases/agewise?org_kind={{ org_kind }}&org_value={{ org_name|urlencode }}&age_group={{ age_group }}&category={{ active_category }}" class="count-link">{{ count }}</a>
     {% else %}
         {{ count }}
     {% endif %}
@@ -96,7 +96,14 @@
     </div>
 </div>
 
-<div style="display: grid; grid-template-columns: 1fr; gap: 25px;">
+<div class="tabs-nav" style="margin-bottom: 20px; display: flex; gap: 10px; border-bottom: 1px solid #dcdde1; padding-bottom: 10px;">
+    <a href="/reports/agewise?category=all" class="btn btn-sm {% if active_category == 'all' %}btn-primary{% else %}btn-outline{% endif %}" style="text-decoration: none; padding: 5px 15px; border-radius: 4px; border: 1px solid #3498db; color: {% if active_category == 'all' %}#fff{% else %}#3498db{% endif %}; background-color: {% if active_category == 'all' %}#3498db{% else %}transparent{% endif %};">All Cases</a>
+    <a href="/reports/agewise?category=minor" class="btn btn-sm {% if active_category == 'minor' %}btn-primary{% else %}btn-outline{% endif %}" style="text-decoration: none; padding: 5px 15px; border-radius: 4px; border: 1px solid #2980b9; color: {% if active_category == 'minor' %}#fff{% else %}#2980b9{% endif %}; background-color: {% if active_category == 'minor' %}#2980b9{% else %}transparent{% endif %};">Minor Cases</a>
+    <a href="/reports/agewise?category=major" class="btn btn-sm {% if active_category == 'major' %}btn-primary{% else %}btn-outline{% endif %}" style="text-decoration: none; padding: 5px 15px; border-radius: 4px; border: 1px solid #e74c3c; color: {% if active_category == 'major' %}#fff{% else %}#e74c3c{% endif %}; background-color: {% if active_category == 'major' %}#e74c3c{% else %}transparent{% endif %};">Major Cases</a>
+    <a href="/reports/agewise?category=suspension" class="btn btn-sm {% if active_category == 'suspension' %}btn-primary{% else %}btn-outline{% endif %}" style="text-decoration: none; padding: 5px 15px; border-radius: 4px; border: 1px solid #f39c12; color: {% if active_category == 'suspension' %}#fff{% else %}#f39c12{% endif %}; background-color: {% if active_category == 'suspension' %}#f39c12{% else %}transparent{% endif %};">Suspension Cases</a>
+</div>
+
+<div class="summary-container" style="display: flex; flex-direction: column; gap: 20px;">
     <!-- Circle-wise Table -->
     <div class="window-panel">
         <div class="window-header" style="background: #1e3a5f; color: #fff;">
@@ -146,16 +153,16 @@
         </div>
     </div>
 
-    <!-- Division-wise Table -->
+    <!-- Paygroup-wise Table -->
     <div class="window-panel">
         <div class="window-header" style="background: #2d5a88; color: #fff;">
-            <span>🏢 Division-wise Age Analysis</span>
+            <span>🏢 Paygroup-wise Age Analysis</span>
         </div>
         <div class="window-body" style="padding: 15px; max-height: 500px; overflow-y: auto;">
             <table style="width: 100%; border-collapse: collapse;">
                 <thead>
                     <tr style="background: #edf2f7;">
-                        <th>Division Name</th>
+                        <th>Pay Group</th>
                         <th style="text-align: right;">Pending &lt; 6 Months</th>
                         <th style="text-align: right;">Pending 6 - 12 Months</th>
                         <th style="text-align: right;">Pending 1 - 2 Years</th>
@@ -165,29 +172,29 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for item in summary.division %}
+                    {% for item in summary.paygroup %}
                     <tr>
                         <td><strong>{{ item.name }}</strong></td>
-                        <td style="text-align: right;">{{ render_count('division', item.name, 'less_6m', item.less_6m) }}</td>
-                        <td style="text-align: right;">{{ render_count('division', item.name, 'six_to_twelve', item.six_to_twelve) }}</td>
-                        <td style="text-align: right;">{{ render_count('division', item.name, 'one_to_two_yr', item.one_to_two_yr) }}</td>
-                        <td style="text-align: right;">{{ render_count('division', item.name, 'more_two_yr', item.more_two_yr) }}</td>
-                        <td style="text-align: right; color: #7f8c8d;">{{ render_count('division', item.name, 'unknown_date', item.unknown_date) }}</td>
+                        <td style="text-align: right;">{{ render_count('paygroup', item.name, 'less_6m', item.less_6m) }}</td>
+                        <td style="text-align: right;">{{ render_count('paygroup', item.name, 'six_to_twelve', item.six_to_twelve) }}</td>
+                        <td style="text-align: right;">{{ render_count('paygroup', item.name, 'one_to_two_yr', item.one_to_two_yr) }}</td>
+                        <td style="text-align: right;">{{ render_count('paygroup', item.name, 'more_two_yr', item.more_two_yr) }}</td>
+                        <td style="text-align: right; color: #7f8c8d;">{{ render_count('paygroup', item.name, 'unknown_date', item.unknown_date) }}</td>
                         <td style="text-align: right; font-weight: bold; background-color: #fcfcfc;">{{ item.total }}</td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="7" class="muted">No division wise data available.</td></tr>
+                    <tr><td colspan="7" class="muted">No paygroup wise data available.</td></tr>
                     {% endfor %}
                     
-                    {% if summary.division %}
+                    {% if summary.paygroup %}
                     <tr class="totals-row">
                         <td>Grand Total</td>
-                        <td style="text-align: right;">{{ summary.division | map(attribute='less_6m') | sum }}</td>
-                        <td style="text-align: right;">{{ summary.division | map(attribute='six_to_twelve') | sum }}</td>
-                        <td style="text-align: right;">{{ summary.division | map(attribute='one_to_two_yr') | sum }}</td>
-                        <td style="text-align: right;">{{ summary.division | map(attribute='more_two_yr') | sum }}</td>
-                        <td style="text-align: right;">{{ summary.division | map(attribute='unknown_date') | sum }}</td>
-                        <td style="text-align: right;">{{ summary.division | map(attribute='total') | sum }}</td>
+                        <td style="text-align: right;">{{ summary.paygroup | map(attribute='less_6m') | sum }}</td>
+                        <td style="text-align: right;">{{ summary.paygroup | map(attribute='six_to_twelve') | sum }}</td>
+                        <td style="text-align: right;">{{ summary.paygroup | map(attribute='one_to_two_yr') | sum }}</td>
+                        <td style="text-align: right;">{{ summary.paygroup | map(attribute='more_two_yr') | sum }}</td>
+                        <td style="text-align: right;">{{ summary.paygroup | map(attribute='unknown_date') | sum }}</td>
+                        <td style="text-align: right;">{{ summary.paygroup | map(attribute='total') | sum }}</td>
                     </tr>
                     {% endif %}
                 </tbody>

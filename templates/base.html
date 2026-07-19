@@ -316,6 +316,7 @@
         </div>
         <div class="user-info">
             <span>User: <strong>{{ user_name or 'Guest' }} ({{ 'Admin' if is_admin else 'Client User' }})</strong></span>
+            <a href="/api/clear_cache" style="background: #27ae60; color: white; padding: 5px 10px; border-radius: 4px; font-weight: bold; font-size: 11px;"><i class="fa fa-refresh"></i> Force Update Data</a>
             <a href="/logout">Logout</a>
         </div>
     </div>
@@ -336,6 +337,7 @@
                 <li><a href="/home" id="nav-dashboard">📊 Dashboard Console</a></li>
                 <li><a href="/case/initiate" id="nav-initiate">➕ Initiate DC Case</a></li>
                 <li><a href="/reports/agewise" id="nav-agewise">📈 Age-wise Summary</a></li>
+                <li><a href="/reports/paygroup-monthwise" id="nav-paygroup">📊 Paygroup Summary</a></li>
                 <li><a href="/eo-reviews" id="nav-eo-reviews">👨‍⚖️ Enquiry Officer Reviews</a></li>
                 {% if session.get('user_role') == 'admin' %}
                 <li><a href="/sync" id="nav-sync">☁️ Sync Circle Data</a></li>
@@ -346,6 +348,7 @@
             <ul class="sidebar-menu">
                 <li><a href="/search/cpf" id="nav-cpf">🔍 CPF Search (Timeline)</a></li>
                 <li><a href="/search/name" id="nav-name">🔍 Employee Name Search</a></li>
+                <li><a href="/reports/unmatched-employees" id="nav-unmatched" style="color: #e74c3c;">⚠️ Unmatched CPF Errors</a></li>
             </ul>
 
             <div class="sidebar-section-title">Utility & Maintenance</div>

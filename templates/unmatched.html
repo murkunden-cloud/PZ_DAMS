@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% set page_title = "Unmatched Employees" %}
+
+{% block content %}
+<div class="window-panel">
+    <div class="window-header">
+        ⚠️ Employees Missing from Master Data
+    </div>
+    <div class="window-body">
+        <p>The following cases contain a CPF Number that does not exist in the <code>master_employe.xlsx</code> data. This means their Pay Group and other master details cannot be loaded automatically. Please verify these CPF numbers in the original Excel file.</p>
+        
+        {% if unmatched %}
+        <div style="overflow-x: auto; margin-top: 20px;">
+            <table>
+                <thead>
+                    <tr>
+                        <th width="80">Sheet</th>
+                        <th width="120">CPF No</th>
+                        <th>Employee Name</th>
+                        <th>Designation</th>
+                        <th>Working Place</th>
+                        <th>Case Reference</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in unmatched %}
+                    <tr>
+                        <td data-label="Sheet"><strong>{{ item.sheet_origin }}</strong></td>
+                        <td data-label="CPF No" style="color: #e74c3c; font-weight: bold;">{{ item.cpf_no }}</td>
+                        <td data-label="Employee Name">{{ item.employee_name }}</td>
+                        <td data-label="Designation"><small>{{ item.designation }}</small></td>
+                        <td data-label="Working Place"><small>{{ item.present_office }}</small></td>
+                        <td data-label="Case Reference"><span style="font-size: 11px;">{{ item.dc_number }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert success" style="margin-top: 20px;">
+            <strong>All Good!</strong> Every active case is perfectly matched with a valid CPF Number in the master employee data.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

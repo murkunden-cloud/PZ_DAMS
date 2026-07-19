@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% set page_title = "Paygroup & Month-wise Summary" %}
+{% set page_subtitle = "Detailed overview of cases grouped by month and employee pay group" %}
+{% block content %}
+
+<!-- Print Stylesheet -->
+<style>
+    .no-print-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        background: #fff;
+        padding: 15px 20px;
+        border: 1px solid #dcdde1;
+        border-radius: 6px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+    }
+    
+    .totals-row {
+        font-weight: bold;
+        background-color: #f8fafc;
+        border-top: 2px solid #cbd5e0;
+        border-bottom: 2px double #2d3748;
+    }
+    
+    @media print {
+        .sidebar, .top-bar, .footer, .btn, .no-print, .no-print-header {
+            display: none !important;
+        }
+        .main-pane {
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+            background: #fff !important;
+        }
+        body {
+            background: #fff !important;
+            color: #000 !important;
+        }
+        .window-panel {
+            border: none !important;
+            box-shadow: none !important;
+            margin-bottom: 30px !important;
+            page-break-inside: avoid;
+        }
+        .window-header {
+            background: #fff !important;
+            color: #000 !important;
+            border-bottom: 2px solid #000 !important;
+        }
+    }
+    
+    .data-table th {
+        background-color: #1f497d;
+        color: white;
+        text-align: center;
+    }
+    .data-table td {
+        text-align: center;
+    }
+    .data-table td:first-child {
+        text-align: left;
+        font-weight: bold;
+    }
+</style>
+
+<div class="no-print-header">
+    <div>
+        <h2 style="margin:0; font-size:18px; color:#2c3e50;"><i class="fa fa-calendar"></i> Paygroup & Month-wise Report</h2>
+        <span style="font-size:13px; color:#7f8c8d;">Data as of latest sync</span>
+    </div>
+    <div style="display:flex; gap:10px;">
+        <button class="btn btn-primary" onclick="window.print()">
+            <i class="fa fa-print"></i> Print Report
+        </button>
+    </div>
+</div>
+
+<div class="tabs-nav" style="margin-bottom: 20px; display: flex; gap: 10px; border-bottom: 1px solid #dcdde1; padding-bottom: 10px;">
+    <a href="/reports/paygroup-monthwise?category=all" class="btn btn-sm {% if active_category == 'all' %}btn-primary{% else %}btn-outline{% endif %}" style="text-decoration: none; padding: 5px 15px; border-radius: 4px; border: 1px solid #3498db; color: {% if active_category == 'all' %}#fff{% else %}#3498db{% endif %}; background-color: {% if active_category == 'all' %}#3498db{% else %}transparent{% endif %};">All Cases</a>
+    <a href="/reports/paygroup-monthwise?category=minor" class="btn btn-sm {% if active_category == 'minor' %}btn-primary{% else %}btn-outline{% endif %}" style="text-decoration: none; padding: 5px 15px; border-radius: 4px; border: 1px solid #2980b9; color: {% if active_category == 'minor' %}#fff{% else %}#2980b9{% endif %}; background-color: {% if active_category == 'minor' %}#2980b9{% else %}transparent{% endif %};">Minor Cases</a>
+    <a href="/reports/paygroup-monthwise?category=major" class="btn btn-sm {% if active_category == 'major' %}btn-primary{% else %}btn-outline{% endif %}" style="text-decoration: none; padding: 5px 15px; border-radius: 4px; border: 1px solid #e74c3c; color: {% if active_category == 'major' %}#fff{% else %}#e74c3c{% endif %}; background-color: {% if active_category == 'major' %}#e74c3c{% else %}transparent{% endif %};">Major Cases</a>
+    <a href="/reports/paygroup-monthwise?category=suspension" class="btn btn-sm {% if active_category == 'suspension' %}btn-primary{% else %}btn-outline{% endif %}" style="text-decoration: none; padding: 5px 15px; border-radius: 4px; border: 1px solid #f39c12; color: {% if active_category == 'suspension' %}#fff{% else %}#f39c12{% endif %}; background-color: {% if active_category == 'suspension' %}#f39c12{% else %}transparent{% endif %};">Suspension Cases</a>
+</div>
+
+{% for circle_name, rows in summary.items() %}
+<div class="window-panel">
+    <div class="window-header">
+        <div class="window-title"><i class="fa fa-table"></i> Month-wise Case Initiation - {{ circle_name }}</div>
+    </div>
+    <div class="window-content" style="padding: 20px;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Month & Year</th>
+                    <th>Pay Group I</th>
+                    <th>Pay Group II</th>
+                    <th>Pay Group III (State)</th>
+                    <th>Pay Group III (Circle)</th>
+                    <th>Pay Group IV</th>
+                    <th>Unknown</th>
+                    <th>Total Cases</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set totals = {'I': 0, 'II': 0, 'III_S': 0, 'III_C': 0, 'IV': 0, 'Unknown': 0, 'Total': 0} %}
+                {% for row in rows %}
+                <tr>
+                    <td>{{ row.Month }}</td>
+                    <td>{{ row['PayGroup I'] }}</td>
+                    <td>{{ row['PayGroup II'] }}</td>
+                    <td>{{ row['PayGroup III (State)'] }}</td>
+                    <td>{{ row['PayGroup III (Circle)'] }}</td>
+                    <td>{{ row['PayGroup IV'] }}</td>
+                    <td>{{ row['Unknown'] }}</td>
+                    <td style="font-weight: bold;">{{ row.Total }}</td>
+                    
+                    {% set _ = totals.update({'I': totals.I + row['PayGroup I']}) %}
+                    {% set _ = totals.update({'II': totals.II + row['PayGroup II']}) %}
+                    {% set _ = totals.update({'III_S': totals.III_S + row['PayGroup III (State)']}) %}
+                    {% set _ = totals.update({'III_C': totals.III_C + row['PayGroup III (Circle)']}) %}
+                    {% set _ = totals.update({'IV': totals.IV + row['PayGroup IV']}) %}
+                    {% set _ = totals.update({'Unknown': totals.Unknown + row['Unknown']}) %}
+                    {% set _ = totals.update({'Total': totals.Total + row.Total}) %}
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" style="text-align:center; padding: 20px; color: #7f8c8d;">
+                        No case data available to generate report.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            {% if rows %}
+            <tfoot>
+                <tr class="totals-row">
+                    <td>Grand Total</td>
+                    <td>{{ totals.I }}</td>
+                    <td>{{ totals.II }}</td>
+                    <td>{{ totals.III_S }}</td>
+                    <td>{{ totals.III_C }}</td>
+                    <td>{{ totals.IV }}</td>
+                    <td>{{ totals.Unknown }}</td>
+                    <td>{{ totals.Total }}</td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+{% endfor %}
+
+{% endblock %}

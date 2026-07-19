@@ -194,7 +194,9 @@
     </div>
     <div style="display: flex; gap: 10px;">
         <a href="/refresh-data" class="btn btn-warning" style="font-size: 13px;">🔄 Refresh Data</a>
-        <a href="/download-workbook" class="btn btn-success" style="font-size: 13px;">📥 Export Excel File</a>
+        <a href="/download-workbook" class="btn btn-success" style="font-size: 13px;">📥 Export Full Excel</a>
+        <a href="/export_changes" class="btn btn-warning" style="font-size: 13px; font-weight: bold; background: #eab308; color: #000;">✨ Export Monthly Changes (Diff)</a>
+        <a href="/api/clear_audit_log" class="btn btn-danger" style="font-size: 13px;" onclick="return confirm('Clear the Audit Log? Do this only at the start of a new month when you drop in a fresh Master Excel file.')">🗑️ Reset Audit Log</a>
     </div>
 </div>
 
@@ -227,8 +229,8 @@
             <h3>Suspension Cases</h3>
             <div class="num">{{ dashboard.pendency.suspension.total }}</div>
             <div style="font-size: 11px; color: #7f8c8d; margin-top: 4px;">
-                <a href="/sheet/14DC" style="color: #f39c12; text-decoration: none; font-weight: bold;">State: {{ dashboard.pendency.suspension.sw }}</a> | 
-                <a href="/sheet/15DC" style="color: #f39c12; text-decoration: none; font-weight: bold;">Circle: {{ dashboard.pendency.suspension.cw }}</a>
+                <a href="/sheet/12DC" style="color: #f39c12; text-decoration: none; font-weight: bold;">State: {{ dashboard.pendency.suspension.sw }}</a> | 
+                <a href="/sheet/13DC" style="color: #f39c12; text-decoration: none; font-weight: bold;">Circle: {{ dashboard.pendency.suspension.cw }}</a>
             </div>
         </div>
         <div class="icon">⏳</div>
@@ -258,144 +260,127 @@
     </div>
 </div>
 
-<!-- Circle / Division Wise Pendency Status Panel -->
+<!-- Case Initiator Wise Bifurcation Panel -->
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 25px;">
-    <!-- Zone Pendency Panel -->
+    
+    <!-- Minor Cases Table -->
     <div class="window-panel" style="margin-bottom: 0;">
         <div class="window-header" style="padding: 10px 15px; background: #edf2f7;">
-            <span>🏢 Zone-wise Case Pendency</span>
-            <span class="badge-count" style="background: #e74c3c; color: #fff;">Active Cases</span>
+            <span>💼 Minor Cases Initiator Pendency</span>
         </div>
-        <div class="window-body" style="padding: 10px; max-height: 220px; overflow-y: auto;">
-            <table style="margin-top: 0;">
+        <div class="window-body" style="padding: 10px;">
+            <table style="margin-top: 0; width: 100%;">
                 <thead>
                     <tr>
-                        <th style="padding: 6px 10px;">Zone Name</th>
-                        <th width="80" style="text-align: right; padding: 6px 10px;">Count</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in dashboard.org_summary.zone %}
-                    {% if item.name != "Unknown" and item.count > 0 %}
-                    <tr>
-                        <td style="padding: 6px 10px;"><strong>{{ item.name }}</strong></td>
-                        <td style="text-align: right; padding: 6px 10px;">
-                            <a href="/cases/agewise?org_kind=zone&org_value={{ item.name|urlencode }}&age_group=all" style="text-decoration: none;">
-                                <span class="badge" style="background: #e74c3c; color: #fff; cursor: pointer;">{{ item.count }}</span>
-                            </a>
-                        </td>
-                    </tr>
-                    {% endif %}
-                    {% else %}
-                    <tr><td colspan="2" class="muted" style="padding: 6px 10px;">No zone wise pendency data.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Circle Pendency Panel -->
-    <div class="window-panel" style="margin-bottom: 0;">
-        <div class="window-header" style="padding: 10px 15px; background: #edf2f7;">
-            <span>🏢 Circle-wise Case Pendency</span>
-            <span class="badge-count" style="background: #3498db; color: #fff;">Active Cases</span>
-        </div>
-        <div class="window-body" style="padding: 10px; max-height: 220px; overflow-y: auto;">
-            <table style="margin-top: 0;">
-                <thead>
-                    <tr>
-                        <th style="padding: 6px 10px;">Circle Name</th>
-                        <th width="80" style="text-align: right; padding: 6px 10px;">Count</th>
+                        <th style="padding: 6px 10px;">Initiator Office</th>
+                        <th style="text-align: right; padding: 6px 10px; color: #2980b9;">Count</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in dashboard.org_summary.circle %}
-                    {% if item.name != "Unknown" and item.count > 0 %}
+                    {% if item.name != "Unknown" and item.minor > 0 %}
                     <tr>
-                        <td style="padding: 6px 10px;"><strong>{{ item.name }}</strong></td>
+                        <td style="padding: 6px 10px; font-weight: bold;">{{ item.name }}</td>
                         <td style="text-align: right; padding: 6px 10px;">
-                            <a href="/cases/agewise?org_kind=circle&org_value={{ item.name|urlencode }}&age_group=all" style="text-decoration: none;">
-                                <span class="badge b-minor">{{ item.count }}</span>
+                            <a href="{{ url_for('cases_by_initiator', initiator=item.name, category='minor') }}" style="text-decoration: none;">
+                                <span class="badge" style="background: #2980b9; color: #fff;">{{ item.minor }}</span>
                             </a>
                         </td>
                     </tr>
                     {% endif %}
                     {% else %}
-                    <tr><td colspan="2" class="muted" style="padding: 6px 10px;">No circle wise pendency data.</td></tr>
+                    <tr><td colspan="2" class="muted" style="padding: 6px 10px; text-align: center;">No minor cases pendency data.</td></tr>
                     {% endfor %}
+                    <tr style="border-top: 2px solid #bdc3c7; background-color: #f8f9fa;">
+                        <td style="padding: 6px 10px; font-weight: bold; color: #2c3e50;">Zone Total</td>
+                        <td style="text-align: right; padding: 6px 10px; font-weight: bold; font-size: 1.1em; color: #2980b9;">
+                            {{ dashboard.org_summary.circle | map(attribute='minor') | sum }}
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
     </div>
 
-    <!-- Division Pendency Panel -->
+    <!-- Major Cases Table -->
     <div class="window-panel" style="margin-bottom: 0;">
         <div class="window-header" style="padding: 10px 15px; background: #edf2f7;">
-            <span>🏢 Division-wise Case Pendency</span>
-            <span class="badge-count" style="background: #27ae60; color: #fff;">Active Cases</span>
+            <span>🔥 Major Cases Initiator Pendency</span>
         </div>
-        <div class="window-body" style="padding: 10px; max-height: 220px; overflow-y: auto;">
-            <table style="margin-top: 0;">
+        <div class="window-body" style="padding: 10px;">
+            <table style="margin-top: 0; width: 100%;">
                 <thead>
                     <tr>
-                        <th style="padding: 6px 10px;">Division Name</th>
-                        <th width="80" style="text-align: right; padding: 6px 10px;">Count</th>
+                        <th style="padding: 6px 10px;">Initiator Office</th>
+                        <th style="text-align: right; padding: 6px 10px; color: #e74c3c;">Count</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for item in dashboard.org_summary.division %}
-                    {% if item.name != "Unknown" and item.count > 0 %}
+                    {% for item in dashboard.org_summary.circle %}
+                    {% if item.name != "Unknown" and item.major > 0 %}
                     <tr>
-                        <td style="padding: 6px 10px;"><strong>{{ item.name }}</strong></td>
+                        <td style="padding: 6px 10px; font-weight: bold;">{{ item.name }}</td>
                         <td style="text-align: right; padding: 6px 10px;">
-                            <a href="/cases/agewise?org_kind=division&org_value={{ item.name|urlencode }}&age_group=all" style="text-decoration: none;">
-                                <span class="badge b-susp">{{ item.count }}</span>
+                            <a href="{{ url_for('cases_by_initiator', initiator=item.name, category='major') }}" style="text-decoration: none;">
+                                <span class="badge" style="background: #e74c3c; color: #fff;">{{ item.major }}</span>
                             </a>
                         </td>
                     </tr>
                     {% endif %}
                     {% else %}
-                    <tr><td colspan="2" class="muted" style="padding: 6px 10px;">No division wise pendency data.</td></tr>
+                    <tr><td colspan="2" class="muted" style="padding: 6px 10px; text-align: center;">No major cases pendency data.</td></tr>
                     {% endfor %}
+                    <tr style="border-top: 2px solid #bdc3c7; background-color: #f8f9fa;">
+                        <td style="padding: 6px 10px; font-weight: bold; color: #2c3e50;">Zone Total</td>
+                        <td style="text-align: right; padding: 6px 10px; font-weight: bold; font-size: 1.1em; color: #e74c3c;">
+                            {{ dashboard.org_summary.circle | map(attribute='major') | sum }}
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
     </div>
-    
-    <!-- Office Pendency Panel -->
+
+    <!-- Suspension Cases Table -->
     <div class="window-panel" style="margin-bottom: 0;">
         <div class="window-header" style="padding: 10px 15px; background: #edf2f7;">
-            <span>🏢 Office-wise Case Pendency</span>
-            <span class="badge-count" style="background: #e67e22; color: #fff;">Active Cases</span>
+            <span>⏳ Suspension Cases Initiator Pendency</span>
         </div>
-        <div class="window-body" style="padding: 10px; max-height: 220px; overflow-y: auto;">
-            <table style="margin-top: 0;">
+        <div class="window-body" style="padding: 10px;">
+            <table style="margin-top: 0; width: 100%;">
                 <thead>
                     <tr>
-                        <th style="padding: 6px 10px;">Office Name</th>
-                        <th width="80" style="text-align: right; padding: 6px 10px;">Count</th>
+                        <th style="padding: 6px 10px;">Initiator Office</th>
+                        <th style="text-align: right; padding: 6px 10px; color: #f39c12;">Count</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for item in dashboard.org_summary.office %}
-                    {% if item.name != "Unknown" and item.count > 0 %}
+                    {% for item in dashboard.org_summary.circle %}
+                    {% if item.name != "Unknown" and item.suspension > 0 %}
                     <tr>
-                        <td style="padding: 6px 10px;"><strong>{{ item.name }}</strong></td>
+                        <td style="padding: 6px 10px; font-weight: bold;">{{ item.name }}</td>
                         <td style="text-align: right; padding: 6px 10px;">
-                            <a href="/cases/agewise?org_kind=office&org_value={{ item.name|urlencode }}&age_group=all" style="text-decoration: none;">
-                                <span class="badge" style="background: #e67e22; color: #fff; cursor: pointer;">{{ item.count }}</span>
+                            <a href="{{ url_for('cases_by_initiator', initiator=item.name, category='suspension') }}" style="text-decoration: none;">
+                                <span class="badge" style="background: #f39c12; color: #fff;">{{ item.suspension }}</span>
                             </a>
                         </td>
                     </tr>
                     {% endif %}
                     {% else %}
-                    <tr><td colspan="2" class="muted" style="padding: 6px 10px;">No office wise pendency data.</td></tr>
+                    <tr><td colspan="2" class="muted" style="padding: 6px 10px; text-align: center;">No suspension cases pendency data.</td></tr>
                     {% endfor %}
+                    <tr style="border-top: 2px solid #bdc3c7; background-color: #f8f9fa;">
+                        <td style="padding: 6px 10px; font-weight: bold; color: #2c3e50;">Zone Total</td>
+                        <td style="text-align: right; padding: 6px 10px; font-weight: bold; font-size: 1.1em; color: #f39c12;">
+                            {{ dashboard.org_summary.circle | map(attribute='suspension') | sum }}
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+
 
 <!-- Monthwise / Yearwise Case Pendency Status Panel -->
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 25px;">

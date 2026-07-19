@@ -137,22 +137,7 @@ def migrate_cases():
                 elif "initiated" in case_type:
                     case_status = "initiated"
                 
-                # Determine Initiator Office from Dispatch Number
-                dispatch_str = (dc_number + " " + dc_record_number).upper()
-                if "CE/PZ" in dispatch_str or "/PZ/" in dispatch_str:
-                    circle = "Pune Zone"
-                elif "SE/PRC" in dispatch_str or "/PRC/" in dispatch_str:
-                    circle = "Pune Rural Circle"
-                elif "SE/GKUC" in dispatch_str or "/GKUC/" in dispatch_str:
-                    circle = "Ganeshkhind Urban Circle"
-                elif "SE/RPUC" in dispatch_str or "/RPUC/" in dispatch_str:
-                    circle = "Rastapeth Urban Circle"
-                else:
-                    circle = "N.A."
-                
-                # Override office and division since count goes to initiator circle/zone
-                office = "N.A."
-                division = "N.A."
+                # (Removed dynamic initiator logic, letting employee's original working location be saved to DB)
                 
                 # Insert into database
                 cursor.execute("""
