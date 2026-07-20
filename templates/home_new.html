@@ -286,7 +286,7 @@
                     {% for item in dashboard.org_summary.circle %}
                     {% if item.name != "Unknown" and item.minor > 0 %}
                     <tr>
-                        <td style="padding: 6px 10px; font-weight: bold;">{{ item.name }}</td>
+                        <td style="padding: 6px 10px; font-weight: bold;">{{ loop.index }}. {{ item.name }}</td>
                         <td style="text-align: right; padding: 6px 10px;">
                             <a href="{{ url_for('cases_by_initiator', initiator=item.name, category='minor') }}" style="text-decoration: none;">
                                 <span class="badge" style="background: #2980b9; color: #fff;">{{ item.minor }}</span>
@@ -325,7 +325,7 @@
                     {% for item in dashboard.org_summary.circle %}
                     {% if item.name != "Unknown" and item.major > 0 %}
                     <tr>
-                        <td style="padding: 6px 10px; font-weight: bold;">{{ item.name }}</td>
+                        <td style="padding: 6px 10px; font-weight: bold;">{{ loop.index }}. {{ item.name }}</td>
                         <td style="text-align: right; padding: 6px 10px;">
                             <a href="{{ url_for('cases_by_initiator', initiator=item.name, category='major') }}" style="text-decoration: none;">
                                 <span class="badge" style="background: #e74c3c; color: #fff;">{{ item.major }}</span>
@@ -364,7 +364,7 @@
                     {% for item in dashboard.org_summary.circle %}
                     {% if item.name != "Unknown" and item.suspension > 0 %}
                     <tr>
-                        <td style="padding: 6px 10px; font-weight: bold;">{{ item.name }}</td>
+                        <td style="padding: 6px 10px; font-weight: bold;">{{ loop.index }}. {{ item.name }}</td>
                         <td style="text-align: right; padding: 6px 10px;">
                             <a href="{{ url_for('cases_by_initiator', initiator=item.name, category='suspension') }}" style="text-decoration: none;">
                                 <span class="badge" style="background: #f39c12; color: #fff;">{{ item.suspension }}</span>

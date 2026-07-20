@@ -87,7 +87,7 @@
 {% for circle_name, rows in summary.items() %}
 <div class="window-panel">
     <div class="window-header">
-        <div class="window-title"><i class="fa fa-table"></i> Month-wise Case Initiation - {{ circle_name }}</div>
+        <div class="window-title"><i class="fa fa-table"></i> Month-wise Case Initiation - {{ loop.index }}. {{ circle_name }}</div>
     </div>
     <div class="window-content" style="padding: 20px;">
         <table class="data-table">

@@ -158,9 +158,13 @@ class DCPendencyEngine:
             circle_list.append(data)
             
         def sort_key(x):
-            if "Unknown" in x["name"] or "Other" in x["name"]:
-                return "zzzzzz"
-            return x["name"].lower()
+            n = x["name"].lower()
+            if "rastapeth" in n or "rpuc" in n: return "1"
+            if "ganeshkhind" in n or "gkuc" in n: return "2"
+            if "rural" in n or "prc" in n: return "3"
+            if "zone" in n: return "4"
+            if "unknown" in n or "other" in n: return "9"
+            return "5_" + n
             
         circle_list.sort(key=sort_key)
         
@@ -361,7 +365,16 @@ class DCPendencyEngine:
                 paygroup_summary[pg][category] += 1
                 paygroup_summary[pg]["total"] += 1
                 
-        def sort_key(name):
+        def circle_sort_key(name):
+            n = name.lower()
+            if "rastapeth" in n or "rpuc" in n: return "1"
+            if "ganeshkhind" in n or "gkuc" in n: return "2"
+            if "rural" in n or "prc" in n: return "3"
+            if "zone" in n: return "4"
+            if "unknown" in n or "other" in n: return "9"
+            return "5_" + n
+            
+        def pg_sort_key(name):
             if "Unknown" in name or "Other" in name:
                 return "zzzzzz"
             return name.lower()
@@ -370,13 +383,13 @@ class DCPendencyEngine:
         for name, counts in circle_summary.items():
             counts["name"] = name
             circle_list.append(counts)
-        circle_list.sort(key=lambda x: sort_key(x["name"]))
+        circle_list.sort(key=lambda x: circle_sort_key(x["name"]))
         
         pg_list = []
         for name, counts in paygroup_summary.items():
             counts["name"] = name
             pg_list.append(counts)
-        pg_list.sort(key=lambda x: sort_key(x["name"]))
+        pg_list.sort(key=lambda x: pg_sort_key(x["name"]))
             
         return {
             "circle": circle_list,
@@ -490,8 +503,18 @@ class DCPendencyEngine:
                 elif pg in ("4", 4.0, "IV", "4.0", 4): summary[initiator_circle][month_str]["IV"] += 1
                 else: summary[initiator_circle][month_str]["Unknown"] += 1
                 
+        def circle_sort_key(name):
+            n = name.lower()
+            if "rastapeth" in n or "rpuc" in n: return "1"
+            if "ganeshkhind" in n or "gkuc" in n: return "2"
+            if "rural" in n or "prc" in n: return "3"
+            if "zone" in n: return "4"
+            if "unknown" in n or "other" in n: return "9"
+            return "5_" + n
+
         result = {}
-        for circle, month_data in summary.items():
+        for circle in sorted(summary.keys(), key=circle_sort_key):
+            month_data = summary[circle]
             result[circle] = []
             for m, counts in month_data.items():
                 result[circle].append({

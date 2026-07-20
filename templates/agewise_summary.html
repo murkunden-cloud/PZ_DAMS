@@ -74,6 +74,7 @@
             border-bottom: 2px double #000 !important;
         }
         .count-link { color: #000 !important; text-decoration: none !important; font-weight: normal !important; pointer-events: none; }
+        .print-only { display: block !important; }
     }
 </style>
 
@@ -86,14 +87,20 @@
 {% endmacro %}
 
 <div class="no-print-header">
-    <div>
-        <h2 style="margin: 0; font-size: 18px; color: #2c3e50;">📅 Case Age-wise Summary</h2>
-        <div class="muted" style="font-size: 12px; margin-top: 2px;">Summary Sheet divided by Circle / Division-wise aging segments</div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <div>
+            <h2 style="margin: 0; font-size: 18px; color: #2c3e50;">📅 Case Age-wise Summary {% if active_category and active_category != 'all' %}({{ active_category|title }} Cases){% endif %}</h2>
+            <div class="muted" style="font-size: 12px; margin-top: 2px;">Summary Sheet divided by Circle / Division-wise aging segments</div>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button onclick="window.print()" class="btn btn-primary">🖨️ Print as PDF</button>
+            <a href="/export/agewise-excel?category={{ active_category }}" class="btn btn-success">📥 Export to Excel</a>
+        </div>
     </div>
-    <div style="display: flex; gap: 10px;">
-        <button onclick="window.print()" class="btn btn-primary">🖨️ Print as PDF</button>
-        <a href="/export/agewise-excel" class="btn btn-success">📥 Export to Excel</a>
-    </div>
+</div>
+
+<div class="print-only" style="display: none; margin-bottom: 20px;">
+    <h2 style="margin: 0; font-size: 24px; color: #000; text-align: center;">Age-wise Case Pendency Status {% if active_category and active_category != 'all' %}({{ active_category|title }} Cases){% endif %}</h2>
 </div>
 
 <div class="tabs-nav" style="margin-bottom: 20px; display: flex; gap: 10px; border-bottom: 1px solid #dcdde1; padding-bottom: 10px;">
@@ -125,7 +132,7 @@
                 <tbody>
                     {% for item in summary.circle %}
                     <tr>
-                        <td><strong>{{ item.name }}</strong></td>
+                        <td><strong>{{ loop.index }}. {{ item.name }}</strong></td>
                         <td style="text-align: right;">{{ render_count('circle', item.name, 'less_6m', item.less_6m) }}</td>
                         <td style="text-align: right;">{{ render_count('circle', item.name, 'six_to_twelve', item.six_to_twelve) }}</td>
                         <td style="text-align: right;">{{ render_count('circle', item.name, 'one_to_two_yr', item.one_to_two_yr) }}</td>

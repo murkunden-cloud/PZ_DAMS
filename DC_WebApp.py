@@ -1278,111 +1278,125 @@ def create_app(loader):
     @app.get("/export/agewise-excel")
     @login_required
     def export_agewise_excel():
-        import openpyxl
-        from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-        from openpyxl.utils import get_column_letter
-        
-        all_dc = loader.load_sheets(loader.op_sheets, use_cache=True)
-        employees = loader.load_emp()
-        summary = pendency_engine.build_agewise_org_summary(all_dc, employees)
-        
-        wb = openpyxl.Workbook()
-        default_sheet = wb.active
-        wb.remove(default_sheet)
-        
-        font_header = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
-        font_title = Font(name="Calibri", size=14, bold=True)
-        fill_header = PatternFill(start_color="1F497D", end_color="1F497D", fill_type="solid")
-        align_center = Alignment(horizontal="center", vertical="center")
-        align_left = Alignment(horizontal="left", vertical="center")
-        align_right = Alignment(horizontal="right", vertical="center")
-        border_thin = Border(
-            left=Side(style='thin', color='D9D9D9'),
-            right=Side(style='thin', color='D9D9D9'),
-            top=Side(style='thin', color='D9D9D9'),
-            bottom=Side(style='thin', color='D9D9D9')
-        )
-        
-        for name, data_list in [("Initiator Office Summary", summary["circle"]), ("Paygroup Summary", summary["paygroup"])]:
-            ws = wb.create_sheet(title=name)
-            ws.views.sheetView[0].showGridLines = True
+        try:
+            category = request.args.get("category", "all")
+            import openpyxl
+            from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+            from openpyxl.utils import get_column_letter
             
-            ws.cell(1, 1, f"Age-wise Case Pendency Status - {name}").font = font_title
-            ws.row_dimensions[1].height = 25
+            all_dc = loader.load_sheets(loader.op_sheets, use_cache=True)
+            employees = loader.load_emp()
+            summary = pendency_engine.build_agewise_org_summary(all_dc, employees, category_filter=category)
             
-            headers = [
-                "Name", 
-                "Pending < 6 Months", 
-                "Pending 6 - 12 Months", 
-                "Pending 1 - 2 Years", 
-                "Pending > 2 Years", 
-                "Unknown Date", 
-                "Total Pending"
-            ]
-            for col_idx, h in enumerate(headers, 1):
-                cell = ws.cell(3, col_idx, h)
-                cell.font = font_header
-                cell.fill = fill_header
-                cell.alignment = align_center
-                cell.border = border_thin
-            ws.row_dimensions[3].height = 24
+            wb = openpyxl.Workbook()
+            default_sheet = wb.active
+            wb.remove(default_sheet)
             
-            row_idx = 4
-            for item in data_list:
-                row_values = [
-                    item["name"],
-                    item["less_6m"],
-                    item["six_to_twelve"],
-                    item["one_to_two_yr"],
-                    item["more_two_yr"],
-                    item["unknown_date"],
-                    item["total"]
+            font_header = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+            font_title = Font(name="Calibri", size=14, bold=True)
+            fill_header = PatternFill(start_color="1F497D", end_color="1F497D", fill_type="solid")
+            align_center = Alignment(horizontal="center", vertical="center")
+            align_left = Alignment(horizontal="left", vertical="center")
+            align_right = Alignment(horizontal="right", vertical="center")
+            border_thin = Border(
+                left=Side(style='thin', color='D9D9D9'),
+                right=Side(style='thin', color='D9D9D9'),
+                top=Side(style='thin', color='D9D9D9'),
+                bottom=Side(style='thin', color='D9D9D9')
+            )
+            
+            cat_title = f" ({category.capitalize()})" if category != "all" else ""
+            
+            for name, data_list in [("Initiator Office Summary", summary["circle"]), ("Paygroup Summary", summary["paygroup"])]:
+                ws = wb.create_sheet(title=name[:31]) # Max 31 chars for sheet title
+                ws.views.sheetView[0].showGridLines = True
+                
+                ws.cell(1, 1, f"Age-wise Case Pendency Status{cat_title} - {name}").font = font_title
+                ws.row_dimensions[1].height = 25
+                
+                headers = [
+                    "Name", 
+                    "Pending < 6 Months", 
+                    "Pending 6 - 12 Months", 
+                    "Pending 1 - 2 Years", 
+                    "Pending > 2 Years", 
+                    "Unknown Date", 
+                    "Total Pending"
                 ]
-                for col_idx, val in enumerate(row_values, 1):
-                    cell = ws.cell(row_idx, col_idx, val)
-                    cell.alignment = align_left if col_idx == 1 else align_right
+                for col_idx, h in enumerate(headers, 1):
+                    cell = ws.cell(3, col_idx, h)
+                    cell.font = font_header
+                    cell.fill = fill_header
+                    cell.alignment = align_center
                     cell.border = border_thin
+                ws.row_dimensions[3].height = 24
+                
+                row_idx = 4
+                for idx, item in enumerate(data_list, 1):
+                    display_name = item["name"]
+                    if name == "Initiator Office Summary":
+                        display_name = f"{idx}. {display_name}"
+                        
+                    row_values = [
+                        display_name,
+                        item["less_6m"],
+                        item["six_to_twelve"],
+                        item["one_to_two_yr"],
+                        item["more_two_yr"],
+                        item["unknown_date"],
+                        item["total"]
+                    ]
+                    for col_idx, val in enumerate(row_values, 1):
+                        cell = ws.cell(row_idx, col_idx, val)
+                        cell.alignment = align_left if col_idx == 1 else align_right
+                        cell.border = border_thin
+                        if col_idx > 1:
+                            cell.number_format = '#,##0'
+                    ws.row_dimensions[row_idx].height = 20
+                    row_idx += 1
+                    
+                total_row = [
+                    "Grand Total",
+                    sum(x["less_6m"] for x in data_list),
+                    sum(x["six_to_twelve"] for x in data_list),
+                    sum(x["one_to_two_yr"] for x in data_list),
+                    sum(x["more_two_yr"] for x in data_list),
+                    sum(x["unknown_date"] for x in data_list),
+                    sum(x["total"] for x in data_list)
+                ]
+                for col_idx, val in enumerate(total_row, 1):
+                    cell = ws.cell(row_idx, col_idx, val)
+                    cell.font = Font(name="Calibri", size=11, bold=True)
+                    cell.alignment = align_left if col_idx == 1 else align_right
+                    cell.border = Border(
+                        top=Side(style='thin', color='000000'),
+                        bottom=Side(style='double', color='000000'),
+                        left=Side(style='thin', color='D9D9D9'),
+                        right=Side(style='thin', color='D9D9D9')
+                    )
                     if col_idx > 1:
                         cell.number_format = '#,##0'
-                ws.row_dimensions[row_idx].height = 20
-                row_idx += 1
+                ws.row_dimensions[row_idx].height = 22
                 
-            total_row = [
-                "Grand Total",
-                sum(x["less_6m"] for x in data_list),
-                sum(x["six_to_twelve"] for x in data_list),
-                sum(x["one_to_two_yr"] for x in data_list),
-                sum(x["more_two_yr"] for x in data_list),
-                sum(x["unknown_date"] for x in data_list),
-                sum(x["total"] for x in data_list)
-            ]
-            for col_idx, val in enumerate(total_row, 1):
-                cell = ws.cell(row_idx, col_idx, val)
-                cell.font = Font(name="Calibri", size=11, bold=True)
-                cell.alignment = align_left if col_idx == 1 else align_right
-                cell.border = Border(
-                    top=Side(style='thin', color='000000'),
-                    bottom=Side(style='double', color='000000'),
-                    left=Side(style='thin', color='D9D9D9'),
-                    right=Side(style='thin', color='D9D9D9')
-                )
-                if col_idx > 1:
-                    cell.number_format = '#,##0'
-            ws.row_dimensions[row_idx].height = 22
-            
-            for col in ws.columns:
-                max_len = 0
-                for cell in col:
-                    if cell.row >= 3:
-                        max_len = max(max_len, len(str(cell.value or '')))
-                col_letter = get_column_letter(col[0].column)
-                ws.column_dimensions[col_letter].width = max(max_len + 4, 15)
-                
-        month_name = datetime.now().strftime("%B")
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        temp_path = os.path.join(loader.cache_dir, f"{month_name}_35DC_agewise_{timestamp}.xlsx")
-        wb.save(temp_path)
-        return send_file(temp_path, as_attachment=True, download_name=f"{month_name}_35DC_agewise_{timestamp}.xlsx")
+                for col in ws.columns:
+                    max_len = 0
+                    for cell in col:
+                        if cell.row >= 3:
+                            max_len = max(max_len, len(str(cell.value or '')))
+                    col_letter = get_column_letter(col[0].column)
+                    ws.column_dimensions[col_letter].width = max(max_len + 4, 15)
+                    
+            month_name = datetime.now().strftime("%B")
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            cat_suffix = f"_{category}" if category != "all" else ""
+            dl_name = f"{month_name}_35DC_agewise{cat_suffix}_{timestamp}.xlsx"
+            temp_path = os.path.join(loader.cache_dir, dl_name)
+            wb.save(temp_path)
+            return send_file(temp_path, as_attachment=True, download_name=dl_name)
+        except Exception as e:
+            import traceback
+            error_trace = traceback.format_exc()
+            return f"<h3>Export Failed</h3><pre>{error_trace}</pre>", 500
 
     @app.get("/cases/initiator")
     @login_required
