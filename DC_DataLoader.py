@@ -215,10 +215,26 @@ class DCDataLoader:
         self._last_emp_mtime = 0
 
     def check_file_modifications(self):
-        # User requested to no longer depend on continuous monitoring of master excel files
-        # The program will now strictly rely on the database and internal cache.
-        # Updates will only happen when the user forcefully clicks "Force Update Data".
-        pass
+        try:
+            if os.path.exists(self.dc_file):
+                dc_mtime = os.path.getmtime(self.dc_file)
+                if self._last_dc_mtime > 0 and dc_mtime > self._last_dc_mtime:
+                    self.clear_cache()
+                self._last_dc_mtime = dc_mtime
+                
+            if os.path.exists(self.emp_file):
+                emp_mtime = os.path.getmtime(self.emp_file)
+                if self._last_emp_mtime > 0 and emp_mtime > self._last_emp_mtime:
+                    self._emp_cache = None
+                    cache_file = os.path.join(self.cache_dir, "emp.pkl")
+                    if os.path.exists(cache_file):
+                        try:
+                            os.remove(cache_file)
+                        except OSError:
+                            pass
+                self._last_emp_mtime = emp_mtime
+        except Exception:
+            pass
 
     def clear_cache(self):
         self._emp_cache = None
@@ -231,14 +247,16 @@ class DCDataLoader:
                     pass
 
     def clear_sheet_cache(self, sheet_name):
-        if sheet_name in self._sheet_cache:
-            del self._sheet_cache[sheet_name]
-        cache_file = os.path.join(self.cache_dir, f"dc_{sheet_name}.pkl")
-        if os.path.exists(cache_file):
-            try:
-                os.remove(cache_file)
-            except OSError:
-                pass
+        keys_to_delete = [k for k in self._sheet_cache.keys() if k.startswith(f"{sheet_name}_") or k == sheet_name]
+        for k in keys_to_delete:
+            del self._sheet_cache[k]
+            
+        for name in os.listdir(self.cache_dir):
+            if name.startswith(f"dc_{sheet_name}") and name.endswith(".pkl"):
+                try:
+                    os.remove(os.path.join(self.cache_dir, name))
+                except OSError:
+                    pass
 
     def get_sheet_meta(self, sheet_name):
         return self.meta.get(sheet_name, {})

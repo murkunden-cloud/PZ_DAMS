@@ -255,45 +255,56 @@ class DCEditor:
                 return []
             worksheet = workbook[actual_sheet]
             meta = self.loader.get_sheet_meta(sheet_name)
-            header_scan_rows = meta.get("data_start", 4) - 1
+            cpf_col = meta.get("cpf_col", 4)
+            
+            first_data_row = -1
+            for row in range(1, min(worksheet.max_row, 30) + 1):
+                cpf_val = worksheet.cell(row, cpf_col).value
+                if cpf_val and has_cpf_value(str(cpf_val)):
+                    first_data_row = row
+                    break
+                    
+            if first_data_row > 1:
+                header_row = first_data_row - 1
+                is_number_row = True
+                for col in range(1, min(worksheet.max_column, 20) + 1):
+                    val = worksheet.cell(header_row, col).value
+                    if val not in (None, ""):
+                        text = str(val).strip()
+                        if text and not text.isdigit() and text != str(col):
+                            is_number_row = False
+                            break
+                if is_number_row and header_row > 1:
+                    header_row -= 1
+            else:
+                header_row = meta.get("data_start", 4) - 1
+
             labels = []
             for col in range(1, worksheet.max_column + 1):
                 label = ""
-                for row in range(1, header_scan_rows + 1):
-                    value = worksheet.cell(row, col).value
-                    if value not in (None, ""):
-                        text = str(value).strip()
-                        if text and text not in (str(col),):
-                            label = text
+                value = worksheet.cell(header_row, col).value
+                if value not in (None, ""):
+                    text = str(value).strip()
+                    if text and not text.isdigit():
+                        label = text
+                if not label:
+                    for row in range(1, header_row):
+                        v = worksheet.cell(row, col).value
+                        if v not in (None, ""):
+                            t = str(v).strip()
+                            if t and not t.isdigit():
+                                label = t
                 if label:
                     labels.append({"column": col, "header": label})
             
-            # Smart fallback: if mostly empty (happens when data_start is unconfigured on 35DC sheets)
-            if sum(1 for l in labels if l['header']) < 3:
-                best_row = 1
-                max_cols = 0
-                for r in range(1, min(10, worksheet.max_row + 1)):
-                    cols_with_data = sum(1 for c in range(1, worksheet.max_column + 1) if worksheet.cell(r, c).value not in (None, ""))
-                    if cols_with_data > max_cols:
-                        max_cols = cols_with_data
-                        best_row = r
-                
-                labels = []
-                for col in range(1, worksheet.max_column + 1):
-                    label = ""
-                    for row in range(1, best_row + 1):
-                        value = worksheet.cell(row, col).value
-                        if value not in (None, ""):
-                            label = str(value)
-                    labels.append({"column": col, "header": label.strip()})
-            
+            # fallback to first-row values if nothing was found
             if not labels:
-                # fallback to first-row values when header detection fails
                 for col in range(1, worksheet.max_column + 1):
                     value = worksheet.cell(1, col).value
                     label = "" if value is None else str(value).strip()
                     if label:
                         labels.append({"column": col, "header": label})
+            
             return labels
         finally:
             if should_close:

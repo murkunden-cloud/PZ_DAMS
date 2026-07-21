@@ -2286,7 +2286,7 @@ def create_app(loader):
         
         si = io.StringIO()
         cw = csv.writer(si)
-        cw.writerow(["Status", "Type", "Sheet", "Row", "CPF", "Name & Designation", "DC No", "EO Details", "Report Status", "Report Details", "SCN Status", "SCN Details"])
+        cw.writerow(["Status", "Sheet", "CPF No", "Name & Designation", "DC No", "DC Date", "EO Appointment Details / Remarks", "Report Details", "SCN Status"])
         
         for sheet_name in sheets:
             frame = all_dc.get(sheet_name)
@@ -2317,15 +2317,26 @@ def create_app(loader):
                 scn_issued = bool(scn_detail and scn_detail.lower() not in ["", "nan", "none"])
                 
                 if eo_detail and eo_detail.lower() not in ["", "nan", "none"]:
-                    status = "Report Received" if report_received else "Report Pending"
+                    if report_received:
+                        if scn_issued:
+                            status = "Report Received (SCN Issued)"
+                        else:
+                            status = "Report Received (SCN Pending)"
+                    else:
+                        status = "Enquiry Officer Appointed (Report Pending)"
                 else:
-                    status = "Not Appointed"
+                    status = "Enquiry Officer NOT Appointed"
                 
+                scn_status_out = f"Issued: {scn_detail}" if scn_issued else "Not Issued"
+                if status == "Report Received (SCN Pending)":
+                     scn_status_out = "SCN Pending"
+
                 cw.writerow([
-                    status, "Major", sheet_name, int(idx) + 1, cpf, name_designation, 
-                    f"{dc_no_val} dt {dc_date_val}", eo_detail, 
-                    "Received" if report_received else "Pending", report_detail,
-                    "Issued" if scn_issued else "Pending", scn_detail
+                    status, sheet_name, cpf, name_designation, 
+                    dc_no_val, dc_date_val, 
+                    eo_detail if eo_detail.lower() not in ["", "nan", "none"] else "Not Appointed", 
+                    report_detail,
+                    scn_status_out
                 ])
                 
         output = si.getvalue()
